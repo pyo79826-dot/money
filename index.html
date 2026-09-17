@@ -31,11 +31,15 @@
     .chip{background:rgba(255,255,255,.12);padding:7px 10px;border-radius:999px}
     .distribution{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#dfe1e6;margin:0 2px 18px}
     .distribution span{min-width:0;transition:width .25s ease}
-    .distribution span:nth-child(1){background:#303036}
-    .distribution span:nth-child(2){background:#6a6b72}
-    .distribution span:nth-child(3){background:#a1a2a8}
-    .distribution span:nth-child(4){background:#cacbd0}
-    .distribution span:nth-child(n+5){background:#e1e2e5}
+    .distribution span:nth-child(1){background:#6ea8fe}
+    .distribution span:nth-child(2){background:#8bd3dd}
+    .distribution span:nth-child(3){background:#f7b267}
+    .distribution span:nth-child(4){background:#d4a5ff}
+    .distribution span:nth-child(5){background:#7bd389}
+    .distribution span:nth-child(6){background:#ff9aa2}
+    .distribution span:nth-child(7){background:#ffd166}
+    .distribution span:nth-child(8){background:#84dcc6}
+    .distribution span:nth-child(n+9){background:#b8c0ff}
     .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 22px}
     .action{border:0;border-radius:18px;padding:15px;background:var(--card);font-weight:800;box-shadow:var(--shadow)}
     .action.primary{background:#111;color:#fff}
@@ -47,7 +51,22 @@
     .pocket-emoji{width:46px;height:46px;border-radius:15px;background:var(--chip);display:grid;place-items:center;font-size:23px}
     .pocket-name{font-weight:850;font-size:17px}
     .pocket-meta{color:var(--muted);font-size:12px;margin-top:4px}
+
     .pocket-value{text-align:right;font-weight:850;font-size:18px}
+    .goal-wrap{grid-column:2 / -1;margin-top:-4px}
+    .goal-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:5px}
+    .goal-bar{height:7px;background:#eceef2;border-radius:999px;overflow:hidden}
+    .goal-bar span{display:block;height:100%;border-radius:999px;transition:width .25s ease}
+    .recent-row{background:var(--card);border-radius:18px;padding:13px 15px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;box-shadow:var(--shadow)}
+    .recent-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;background:var(--chip)}
+    .recent-main{min-width:0}
+    .recent-title{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .recent-meta{font-size:11px;color:var(--muted);margin-top:3px}
+    .recent-amount{font-size:14px;font-weight:850}
+    .recent-amount.plus{color:var(--good)}.recent-amount.minus{color:var(--bad)}
+    .color-field{display:flex;align-items:center;gap:10px}
+    .color-field input[type="color"]{width:54px;height:44px;padding:4px;border:1px solid var(--line);border-radius:12px;background:#fff}
+
     .smallbtn{border:0;background:var(--chip);border-radius:12px;padding:9px 11px;font-weight:800}
     .empty{background:var(--card);border-radius:22px;padding:28px;text-align:center;color:var(--muted)}
     .history-tools{display:flex;gap:8px;margin:0 0 14px;overflow:auto}
@@ -74,13 +93,15 @@
     .chart-card{background:var(--card);border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
     .chart-title{font-size:17px;font-weight:850;margin-bottom:12px}
     .pie-wrap{display:grid;grid-template-columns:160px 1fr;gap:18px;align-items:center}
-    .pie{width:160px;height:160px;border-radius:50%;position:relative;background:conic-gradient(#ddd 0 100%)}
-    .pie::after{content:"";position:absolute;inset:38px;border-radius:50%;background:var(--card)}
+    .pie{width:160px;height:160px;border-radius:50%;position:relative;background:conic-gradient(#ddd 0 100%);display:grid;place-items:center}
+    .pie::after{content:"";position:absolute;inset:38px;border-radius:50%;background:var(--card);z-index:1}
+    .pie-center{position:relative;z-index:2;text-align:center;font-size:11px;color:var(--muted);line-height:1.25}
+    .pie-center strong{display:block;color:var(--text);font-size:15px;margin-top:2px}
     .legend{display:grid;gap:9px}
     .legend-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;font-size:13px}
     .legend-dot{width:11px;height:11px;border-radius:50%}
     .legend-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .legend-value{font-weight:800}
+    .legend-value{font-weight:800;color:#333}
     .calendar-card{background:var(--card);border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
     .calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
     .calendar-title{font-weight:900;font-size:18px}
@@ -152,6 +173,8 @@
     </div>
     <div class="section-head"><div class="section-title">用途別の残高</div><button class="textbtn" id="addPocketBtn">＋ 箱を追加</button></div>
     <div id="pocketList" class="list"></div>
+    <div class="section-head"><div class="section-title">最近の動き</div><button class="textbtn" id="goHistoryBtn">すべて見る</button></div>
+    <div id="recentList" class="list"></div>
   </section>
 
   <section id="historyPage" class="page">
@@ -177,13 +200,21 @@
         <div class="stat-label">今月の支出</div>
         <div class="stat-value" id="reportExpense">¥0</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の差額</div>
+        <div class="stat-value" id="reportNet">¥0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">いちばん使った箱</div>
+        <div class="stat-value" id="reportTopPocket" style="font-size:18px">—</div>
+      </div>
     </div>
 
     <div class="chart-card">
       <div class="chart-title">今月使った金額</div>
       <div id="pieEmpty" class="empty" style="display:none">今月の支出はまだありません</div>
       <div id="pieWrap" class="pie-wrap">
-        <div id="expensePie" class="pie" aria-label="今月の支出円グラフ"></div>
+        <div id="expensePie" class="pie" aria-label="今月の支出円グラフ"><div class="pie-center">TOTAL<strong id="pieTotal">¥0</strong></div></div>
         <div id="expenseLegend" class="legend"></div>
       </div>
     </div>
@@ -215,7 +246,7 @@
     <div class="settings-card">
       <h3>お金箱</h3>
       <div class="settings-row"><span>新しい箱を追加</span><button class="smallbtn" id="settingsAddPocketBtn">追加</button></div>
-      <p class="hint">ホーム画面の箱をタップすると、名前・絵文字・振り分け率を変更できます。</p>
+      <p class="hint">ホーム画面の箱をタップすると、名前・絵文字・色・目標額・振り分け率を変更できます。</p>
     </div>
     <div class="settings-card">
       <h3>データ</h3>
@@ -224,7 +255,7 @@
       <input id="importFile" type="file" accept="application/json" hidden>
       <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
     </div>
-    <div class="version">VAULT v2.4</div>
+    <div class="version">VAULT v2.6</div>
   </section>
 </main>
 
@@ -281,6 +312,10 @@
     <div class="field"><label>給料の振り分け率</label><input id="pocketAllocation" type="number" min="0" max="100" step="1" value="0"></div>
   </div>
   <div class="field"><label>名前</label><input id="pocketName" maxlength="20" placeholder="旅行" required></div>
+  <div class="row2">
+    <div class="field"><label>目標額（任意）</label><input id="pocketTarget" type="number" min="0" step="1000" inputmode="numeric" placeholder="100000"></div>
+    <div class="field"><label>カラー</label><div class="color-field"><input id="pocketColor" type="color" value="#6ea8fe"><span class="hint">グラフにも反映</span></div></div>
+  </div>
   <div class="modal-actions"><button class="save" id="pocketSaveBtn" value="default">保存</button></div>
   <button type="button" class="modal-danger" id="pocketDeleteBtn" hidden>この箱を削除</button>
 </form></dialog>
@@ -291,10 +326,10 @@
 const STORAGE_KEY="moneybox-v1";
 const DEFAULT={
   pockets:[
-    {id:"hobby",name:"趣味",emoji:"🎮",balance:0,allocation:25},
-    {id:"family",name:"親孝行",emoji:"🎁",balance:0,allocation:10},
-    {id:"saving",name:"貯金",emoji:"🏦",balance:0,allocation:65},
-    {id:"invest",name:"投資資金",emoji:"📈",balance:0,allocation:0}
+    {id:"hobby",name:"趣味",emoji:"🎮",balance:0,allocation:25,target:0,color:"#6ea8fe"},
+    {id:"family",name:"親孝行",emoji:"🎁",balance:0,allocation:10,target:0,color:"#ff9aa2"},
+    {id:"saving",name:"貯金",emoji:"🏦",balance:0,allocation:65,target:0,color:"#7bd389"},
+    {id:"invest",name:"投資資金",emoji:"📈",balance:0,allocation:0,target:0,color:"#d4a5ff"}
   ],
   transactions:[],
   settings:{lastSalary:0}
@@ -303,6 +338,10 @@ let data=load(), historyFilter="all";
 
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))}
+function defaultPocketColor(i){
+  const colors=["#6ea8fe","#ff9aa2","#7bd389","#d4a5ff","#f7b267","#8bd3dd","#ffd166","#84dcc6","#b8c0ff","#f6a6ff"];
+  return colors[i%colors.length];
+}
 function load(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY);
@@ -310,7 +349,7 @@ function load(){
     const d=JSON.parse(raw);
     if(!Array.isArray(d.pockets)||!Array.isArray(d.transactions))return clone(DEFAULT);
     d.settings=d.settings||{lastSalary:0};
-    d.pockets.forEach(p=>{if(typeof p.allocation!=="number")p.allocation=0;if(typeof p.balance!=="number")p.balance=0});
+    d.pockets.forEach((p,i)=>{if(typeof p.allocation!=="number")p.allocation=0;if(typeof p.balance!=="number")p.balance=0;if(typeof p.target!=="number")p.target=0;if(!p.color)p.color=defaultPocketColor(i)});
 
     // v2.4 migration: old auto-distribution history was stored as one row per pocket.
     // Collapse salary rows that were recorded within 3 seconds of each other into one history item.
@@ -390,28 +429,58 @@ function render(){
 
   const dist=document.getElementById("distribution");dist.innerHTML="";
   const positiveTotal=data.pockets.reduce((s,p)=>s+Math.max(0,p.balance),0);
-  data.pockets.forEach(p=>{
+  data.pockets.forEach((p,i)=>{
     const s=document.createElement("span");
     s.style.width=(positiveTotal?Math.max(0,p.balance)/positiveTotal*100:0)+"%";
+    s.style.background=p.color||defaultPocketColor(i);
     s.title=p.name+" "+yen(p.balance);
     dist.appendChild(s);
   });
 
   const list=document.getElementById("pocketList");list.innerHTML="";
   if(!data.pockets.length)list.innerHTML='<div class="empty">お金箱を追加してください</div>';
-  data.pockets.forEach(p=>{
+  data.pockets.forEach((p,i)=>{
     const el=document.createElement("button");el.className="pocket";el.type="button";
-    el.innerHTML=`<div class="pocket-emoji">${escapeHtml(p.emoji||"💰")}</div>
+    const target=Math.max(0,Number(p.target)||0);
+    const progress=target>0?Math.max(0,Math.min(100,(p.balance/target)*100)):0;
+    const goal=target>0
+      ? `<div class="goal-wrap"><div class="goal-row"><span>目標 ${yen(target)}</span><span>${Math.round(progress)}%</span></div><div class="goal-bar"><span style="width:${progress}%;background:${p.color||defaultPocketColor(i)}"></span></div></div>`
+      : "";
+    el.innerHTML=`<div class="pocket-emoji" style="background:${p.color||defaultPocketColor(i)}22">${escapeHtml(p.emoji||"💰")}</div>
       <div><div class="pocket-name">${escapeHtml(p.name)}</div><div class="pocket-meta">給料の ${p.allocation}% ・ タップで編集</div></div>
-      <div class="pocket-value">${yen(p.balance)}</div>`;
+      <div class="pocket-value">${yen(p.balance)}</div>${goal}`;
     el.addEventListener("click",()=>openPocketEditor(p.id));
     list.appendChild(el);
   });
 
+  renderRecent();
   renderHistory();
   renderSelects();
   renderAllocation();
   renderAnalytics();
+}
+
+function renderRecent(){
+  const box=document.getElementById("recentList");
+  if(!box)return;
+  box.innerHTML="";
+  const txs=[...data.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,3);
+  if(!txs.length){
+    box.innerHTML='<div class="empty">まだ入出金はありません</div>';
+    return;
+  }
+  txs.forEach(t=>{
+    const row=document.createElement("div");
+    row.className="recent-row";
+    const p=getPocket(t.pocketId);
+    const emoji=isSalaryGroup(t)?"💴":(p?.emoji||"💰");
+    const sign=t.type==="income"?"+":"−";
+    row.innerHTML=`<div class="recent-icon">${escapeHtml(emoji)}</div>
+      <div class="recent-main"><div class="recent-title">${escapeHtml(t.memo||(t.type==="income"?"入金":"支出"))}</div>
+      <div class="recent-meta">${new Date(t.date).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} ・ ${escapeHtml(pocketNameForTx(t))}</div></div>
+      <div class="recent-amount ${t.type==="income"?"plus":"minus"}">${sign}${yen(t.amount)}</div>`;
+    box.appendChild(row);
+  });
 }
 
 function renderHistory(){
@@ -495,6 +564,9 @@ function showPage(pageId){
 document.querySelectorAll(".nav button").forEach(btn=>btn.addEventListener("click",()=>{
   showPage(btn.dataset.page);
 }));
+document.getElementById("goHistoryBtn").addEventListener("click",()=>{
+  showPage("historyPage");
+});
 
 document.querySelectorAll(".filterbtn").forEach(btn=>btn.addEventListener("click",()=>{
   historyFilter=btn.dataset.filter;
@@ -622,6 +694,8 @@ function openNewPocket(){
   document.getElementById("pocketEmoji").value="💰";
   document.getElementById("pocketName").value="";
   document.getElementById("pocketAllocation").value="0";
+  document.getElementById("pocketTarget").value="";
+  document.getElementById("pocketColor").value=defaultPocketColor(data.pockets.length);
   document.getElementById("pocketDeleteBtn").hidden=true;
   openAppDialog(pocketDialog);
 }
@@ -632,6 +706,8 @@ function openPocketEditor(id){
   document.getElementById("pocketEmoji").value=p.emoji||"💰";
   document.getElementById("pocketName").value=p.name;
   document.getElementById("pocketAllocation").value=p.allocation;
+  document.getElementById("pocketTarget").value=p.target||"";
+  document.getElementById("pocketColor").value=p.color||defaultPocketColor(data.pockets.indexOf(p));
   document.getElementById("pocketDeleteBtn").hidden=false;
   openAppDialog(pocketDialog);
 }
@@ -642,10 +718,12 @@ document.getElementById("pocketSaveBtn").onclick=e=>{
   const id=document.getElementById("editPocketId").value,name=document.getElementById("pocketName").value.trim();
   const emoji=document.getElementById("pocketEmoji").value.trim()||"💰";
   const allocation=Math.max(0,Math.min(100,Math.round(Number(document.getElementById("pocketAllocation").value)||0)));
+  const target=Math.max(0,Math.round(Number(document.getElementById("pocketTarget").value)||0));
+  const color=document.getElementById("pocketColor").value||defaultPocketColor(data.pockets.length);
   if(!name)return;
   if(id){
-    const p=getPocket(id);if(!p)return;p.name=name;p.emoji=emoji;p.allocation=allocation;
-  }else data.pockets.push({id:uid(),name,emoji,balance:0,allocation});
+    const p=getPocket(id);if(!p)return;p.name=name;p.emoji=emoji;p.allocation=allocation;p.target=target;p.color=color;
+  }else data.pockets.push({id:uid(),name,emoji,balance:0,allocation,target,color});
   save();closeAppDialog(pocketDialog);showToast(id?"変更しました":"追加しました");
 };
 document.getElementById("pocketDeleteBtn").onclick=()=>{
@@ -662,7 +740,18 @@ calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1
 let selectedDateKey=txDateKey({date:nowISO()});
 
 function colorForIndex(i){
-  const colors=["#25262a","#5b5c62","#85868d","#aaabb0","#c8c9cd","#3f4045","#72737a","#999aa0"];
+  const colors=[
+    "#6ea8fe", // blue
+    "#8bd3dd", // aqua
+    "#f7b267", // orange
+    "#d4a5ff", // lavender
+    "#7bd389", // green
+    "#ff9aa2", // pink
+    "#ffd166", // yellow
+    "#84dcc6", // mint
+    "#b8c0ff", // periwinkle
+    "#f6a6ff"  // soft magenta
+  ];
   return colors[i%colors.length];
 }
 
@@ -675,26 +764,37 @@ function renderAnalytics(){
 
   document.getElementById("reportIncome").textContent=yen(income);
   document.getElementById("reportExpense").textContent=yen(expense);
+  const net=income-expense;
+  const netEl=document.getElementById("reportNet");
+  netEl.textContent=(net>0?"+":"")+yen(net);
+  netEl.style.color=net>0?"var(--good)":(net<0?"var(--bad)":"var(--text)");
 
   const byPocket={};
   monthTx.filter(t=>t.type==="expense").forEach(t=>{
-    const name=pocketNameForTx(t);
-    byPocket[name]=(byPocket[name]||0)+(Number(t.amount)||0);
+    const key=t.pocketId||pocketNameForTx(t);
+    if(!byPocket[key]){
+      const p=getPocket(t.pocketId);
+      byPocket[key]={name:p?.name||pocketNameForTx(t),value:0,color:p?.color||null};
+    }
+    byPocket[key].value+=(Number(t.amount)||0);
   });
+  const top=Object.values(byPocket).sort((a,b)=>b.value-a.value)[0];
+  document.getElementById("reportTopPocket").textContent=top?`${top.name} ${yen(top.value)}`:"—";
   renderExpensePie(byPocket);
   renderCalendar();
   renderSelectedDay();
 }
 
 function renderExpensePie(byPocket){
-  const entries=Object.entries(byPocket).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  const total=entries.reduce((s,[,v])=>s+v,0);
+  const entries=Object.values(byPocket).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
+  const total=entries.reduce((s,x)=>s+x.value,0);
   const pie=document.getElementById("expensePie");
   const legend=document.getElementById("expenseLegend");
   const wrap=document.getElementById("pieWrap");
   const empty=document.getElementById("pieEmpty");
   legend.innerHTML="";
 
+  document.getElementById("pieTotal").textContent=yen(total);
   if(!total){
     wrap.style.display="none";
     empty.style.display="block";
@@ -705,10 +805,11 @@ function renderExpensePie(byPocket){
 
   let cursor=0;
   const stops=[];
-  entries.forEach(([name,value],i)=>{
+  entries.forEach((entry,i)=>{
+    const name=entry.name,value=entry.value;
     const start=cursor;
     const end=cursor+(value/total)*100;
-    const color=colorForIndex(i);
+    const color=entry.color||colorForIndex(i);
     stops.push(`${color} ${start}% ${end}%`);
     cursor=end;
 
