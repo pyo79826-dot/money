@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="お金箱">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>お金箱</title>
+  <style>
+    :root{
+      --bg:#f3f4f7; --card:#fff; --text:#111; --muted:#8c8c93; --line:#e6e7eb;
+      --accent:#111; --good:#14833b; --bad:#c8372d; --chip:#f0f1f4;
+      --shadow:0 10px 28px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+    body{min-height:100vh;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+    button,input,select{font:inherit}
+    .app{max-width:760px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 18px}
+    h1{font-size:38px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+    .iconbtn{border:0;background:var(--card);width:48px;height:48px;border-radius:50%;font-size:29px;box-shadow:var(--shadow);cursor:pointer}
+    .summary{background:linear-gradient(135deg,#111,#303036);color:white;border-radius:28px;padding:22px;box-shadow:var(--shadow);margin-bottom:16px}
+    .summary .label{opacity:.7;font-size:14px}
+    .summary .value{font-size:36px;font-weight:800;letter-spacing:-.04em;margin:5px 0 12px}
+    .summary .sub{display:flex;gap:9px;flex-wrap:wrap;font-size:13px;opacity:.86}
+    .chip{background:rgba(255,255,255,.12);padding:7px 10px;border-radius:999px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 22px}
+    .action{border:0;border-radius:18px;padding:15px;background:var(--card);font-weight:700;box-shadow:var(--shadow);cursor:pointer}
+    .action.primary{background:#111;color:#fff}
+    .section-title{font-size:17px;color:var(--muted);font-weight:700;margin:25px 5px 10px}
+    .list{display:grid;gap:10px}
+    .pocket{background:var(--card);border-radius:22px;padding:17px 18px;box-shadow:var(--shadow);display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:center}
+    .pocket-emoji{width:46px;height:46px;border-radius:15px;background:var(--chip);display:grid;place-items:center;font-size:23px}
+    .pocket-name{font-weight:800;font-size:17px}
+    .pocket-meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .pocket-value{text-align:right;font-weight:800;font-size:18px}
+    .smallbtn{border:0;background:var(--chip);border-radius:12px;padding:8px 11px;font-weight:700;cursor:pointer}
+    .empty{background:var(--card);border-radius:22px;padding:28px;text-align:center;color:var(--muted)}
+    .history-row{background:var(--card);border-radius:18px;padding:15px 16px;display:grid;grid-template-columns:1fr auto;gap:10px;box-shadow:var(--shadow)}
+    .history-title{font-weight:750}
+    .history-meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .amount.plus{color:var(--good);font-weight:800}.amount.minus{color:var(--bad);font-weight:800}
+    .settings-card{background:var(--card);border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:12px}
+    .settings-card h3{margin:0 0 12px;font-size:17px}
+    .settings-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+    .settings-row:last-child{border-bottom:0}
+    .settings-row input{width:86px;padding:9px;border:1px solid var(--line);border-radius:12px;text-align:right}
+    .danger{color:var(--bad)}
+    .nav{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(700px,calc(100% - 24px));background:rgba(255,255,255,.93);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(3,1fr);padding:8px;border-radius:24px;box-shadow:0 10px 35px rgba(0,0,0,.14);z-index:20}
+    .nav button{border:0;background:transparent;border-radius:17px;padding:11px 4px;font-weight:750;color:#777;cursor:pointer}
+    .nav button.active{background:#111;color:#fff}
+    .page{display:none}.page.active{display:block}
+    dialog{border:0;border-radius:28px;padding:0;width:min(92vw,520px);box-shadow:0 25px 80px rgba(0,0,0,.25)}
+    dialog::backdrop{background:rgba(0,0,0,.38);backdrop-filter:blur(3px)}
+    .modal{padding:22px}
+    .modal h2{margin:0 0 18px;font-size:24px}
+    .field{display:grid;gap:7px;margin:12px 0}
+    .field label{font-size:13px;color:var(--muted);font-weight:700}
+    .field input,.field select{width:100%;border:1px solid var(--line);background:white;padding:13px 14px;border-radius:14px;outline:none}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+    .modal-actions button{border:0;border-radius:15px;padding:13px;font-weight:800;cursor:pointer}
+    .cancel{background:var(--chip)}.save{background:#111;color:white}
+    .hint{font-size:12px;color:var(--muted);line-height:1.55}
+    .toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#111;color:white;border-radius:999px;padding:10px 15px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:100}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media (max-width:420px){h1{font-size:34px}.summary .value{font-size:32px}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="homePage" class="page active">
+      <div class="topbar"><h1>お金箱</h1><button class="iconbtn" id="quickAddBtn" aria-label="取引を追加">＋</button></div>
+      <div class="summary">
+        <div class="label">合計残高</div>
+        <div class="value" id="totalBalance">¥0</div>
+        <div class="sub">
+          <span class="chip" id="monthIn">今月の入金 ¥0</span>
+          <span class="chip" id="monthOut">今月の支出 ¥0</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="action primary" id="salaryBtn">給料を振り分け</button>
+        <button class="action" id="transferBtn">箱どうしで移動</button>
+      </div>
+      <div class="section-title">用途別の残高</div>
+      <div id="pocketList" class="list"></div>
+    </section>
+
+    <section id="historyPage" class="page">
+      <div class="topbar"><h1>履歴</h1><button class="iconbtn" id="historyAddBtn">＋</button></div>
+      <div id="historyList" class="list"></div>
+    </section>
+
+    <section id="settingsPage" class="page">
+      <div class="topbar"><h1>設定</h1><span></span></div>
+      <div class="settings-card">
+        <h3>給料の自動振り分け</h3>
+        <div id="allocationSettings"></div>
+        <p class="hint">合計が100%になるように設定してください。月が変わっても残高はリセットされません。</p>
+      </div>
+      <div class="settings-card">
+        <h3>データ</h3>
+        <div class="settings-row"><span>バックアップを書き出す</span><button class="smallbtn" id="exportBtn">書き出し</button></div>
+        <div class="settings-row"><span>バックアップを読み込む</span><button class="smallbtn" id="importBtn">読み込む</button></div>
+        <input id="importFile" type="file" accept="application/json" hidden>
+        <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav">
+    <button data-page="homePage" class="active">残高</button>
+    <button data-page="historyPage">履歴</button>
+    <button data-page="settingsPage">設定</button>
+  </nav>
+
+  <dialog id="transactionDialog">
+    <form method="dialog" class="modal" id="transactionForm">
+      <h2>取引を追加</h2>
+      <div class="row2">
+        <div class="field"><label>種類</label><select id="txType"><option value="expense">支出</option><option value="income">入金</option></select></div>
+        <div class="field"><label>お金箱</label><select id="txPocket"></select></div>
+      </div>
+      <div class="field"><label>金額</label><input id="txAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="3000" required></div>
+      <div class="field"><label>メモ</label><input id="txMemo" maxlength="40" placeholder="ゲーム、プレゼントなど"></div>
+      <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="txSaveBtn" value="default">保存</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="salaryDialog">
+    <form method="dialog" class="modal" id="salaryForm">
+      <h2>給料を振り分け</h2>
+      <div class="field"><label>今回の給料</label><input id="salaryAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="60000" required></div>
+      <div id="salaryPreview" class="hint"></div>
+      <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="salarySaveBtn" value="default">振り分ける</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="transferDialog">
+    <form method="dialog" class="modal" id="transferForm">
+      <h2>箱どうしで移動</h2>
+      <div class="row2">
+        <div class="field"><label>移動元</label><select id="fromPocket"></select></div>
+        <div class="field"><label>移動先</label><select id="toPocket"></select></div>
+      </div>
+      <div class="field"><label>金額</label><input id="transferAmount" type="number" min="1" step="1" inputmode="numeric" required></div>
+      <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="transferSaveBtn" value="default">移動する</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = "moneybox-v1";
+const DEFAULT = {
+  pockets:[
+    {id:"hobby",name:"趣味",emoji:"🎮",balance:0,allocation:25},
+    {id:"family",name:"親孝行",emoji:"🎁",balance:0,allocation:10},
+    {id:"saving",name:"貯金",emoji:"🏦",balance:0,allocation:65},
+    {id:"invest",name:"投資資金",emoji:"📈",balance:0,allocation:0}
+  ],
+  transactions:[]
+};
+let data = load();
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function load(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return clone(DEFAULT);
+    const d=JSON.parse(raw);
+    if(!d.pockets || !d.transactions) return clone(DEFAULT);
+    return d;
+  }catch(e){return clone(DEFAULT)}
+}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render()}
+function yen(n){return new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:0}).format(Math.round(n||0))}
+function nowISO(){return new Date().toISOString()}
+function monthKey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function getPocket(id){return data.pockets.find(p=>p.id===id)}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
+
+function render(){
+  const total=data.pockets.reduce((s,p)=>s+p.balance,0);
+  document.getElementById("totalBalance").textContent=yen(total);
+  const mk=monthKey();
+  const monthTx=data.transactions.filter(t=>monthKey(new Date(t.date))===mk);
+  const inc=monthTx.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const out=monthTx.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  document.getElementById("monthIn").textContent="今月の入金 "+yen(inc);
+  document.getElementById("monthOut").textContent="今月の支出 "+yen(out);
+
+  const list=document.getElementById("pocketList"); list.innerHTML="";
+  data.pockets.forEach(p=>{
+    const el=document.createElement("div"); el.className="pocket";
+    el.innerHTML=`<div class="pocket-emoji">${p.emoji}</div>
+      <div><div class="pocket-name">${escapeHtml(p.name)}</div><div class="pocket-meta">給料の ${p.allocation}% ・ 残高は翌月へ持ち越し</div></div>
+      <div class="pocket-value">${yen(p.balance)}</div>`;
+    list.appendChild(el);
+  });
+
+  const hist=document.getElementById("historyList"); hist.innerHTML="";
+  const txs=[...data.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!txs.length){hist.innerHTML='<div class="empty">まだ履歴はありません</div>'}
+  txs.forEach(t=>{
+    const p=getPocket(t.pocketId); const sign=t.type==="income"?"+":"−";
+    const row=document.createElement("div"); row.className="history-row";
+    row.innerHTML=`<div><div class="history-title">${escapeHtml(t.memo||typeName(t.type))}</div>
+      <div class="history-meta">${p?escapeHtml(p.name):"不明"} ・ ${new Date(t.date).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div></div>
+      <div class="amount ${t.type==="income"?"plus":"minus"}">${sign}${yen(t.amount)}</div>`;
+    hist.appendChild(row);
+  });
+
+  renderSelects();
+  renderAllocation();
+}
+function typeName(t){return t==="income"?"入金":t==="expense"?"支出":"移動"}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function renderSelects(){
+  ["txPocket","fromPocket","toPocket"].forEach(id=>{
+    const s=document.getElementById(id); const old=s.value; s.innerHTML="";
+    data.pockets.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=`${p.emoji} ${p.name}`;s.appendChild(o)});
+    if([...s.options].some(o=>o.value===old)) s.value=old;
+  });
+}
+function renderAllocation(){
+  const c=document.getElementById("allocationSettings"); c.innerHTML="";
+  data.pockets.forEach(p=>{
+    const row=document.createElement("div"); row.className="settings-row";
+    row.innerHTML=`<span>${p.emoji} ${escapeHtml(p.name)}</span><span><input type="number" min="0" max="100" value="${p.allocation}" data-alloc="${p.id}"> %</span>`;
+    c.appendChild(row);
+  });
+  c.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
+    const p=getPocket(e.target.dataset.alloc); p.allocation=Math.max(0,Math.min(100,Number(e.target.value)||0)); save();
+  }));
+}
+
+document.querySelectorAll(".nav button").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b===btn));
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===btn.dataset.page));
+}));
+
+const txDialog=document.getElementById("transactionDialog");
+document.getElementById("quickAddBtn").onclick=()=>txDialog.showModal();
+document.getElementById("historyAddBtn").onclick=()=>txDialog.showModal();
+document.getElementById("txSaveBtn").onclick=e=>{
+  e.preventDefault();
+  const type=document.getElementById("txType").value,pid=document.getElementById("txPocket").value;
+  const amount=Math.round(Number(document.getElementById("txAmount").value));
+  const memo=document.getElementById("txMemo").value.trim();
+  if(!amount||amount<=0)return;
+  const p=getPocket(pid);
+  if(type==="expense" && p.balance<amount && !confirm("このお金箱の残高を超えます。続けますか？"))return;
+  p.balance += type==="income"?amount:-amount;
+  data.transactions.push({id:crypto.randomUUID?crypto.randomUUID():Date.now()+"",type,pocketId:pid,amount,memo,date:nowISO()});
+  save();txDialog.close();document.getElementById("transactionForm").reset();showToast("保存しました");
+};
+
+const salaryDialog=document.getElementById("salaryDialog");
+document.getElementById("salaryBtn").onclick=()=>{salaryDialog.showModal();updateSalaryPreview()};
+document.getElementById("salaryAmount").oninput=updateSalaryPreview;
+function updateSalaryPreview(){
+  const amount=Math.round(Number(document.getElementById("salaryAmount").value)||0);
+  const totalAlloc=data.pockets.reduce((s,p)=>s+p.allocation,0);
+  const lines=data.pockets.filter(p=>p.allocation>0).map(p=>`${p.emoji} ${p.name}: ${yen(amount*p.allocation/100)}`);
+  document.getElementById("salaryPreview").innerHTML=`設定合計: <b>${totalAlloc}%</b><br>${lines.join("<br>")}`;
+}
+document.getElementById("salarySaveBtn").onclick=e=>{
+  e.preventDefault();
+  const amount=Math.round(Number(document.getElementById("salaryAmount").value));
+  if(!amount||amount<=0)return;
+  const totalAlloc=data.pockets.reduce((s,p)=>s+p.allocation,0);
+  if(totalAlloc!==100){alert("振り分け割合の合計を100%にしてください。");return}
+  let assigned=0;
+  const targets=data.pockets.filter(p=>p.allocation>0);
+  targets.forEach((p,i)=>{
+    let part=i===targets.length-1?amount-assigned:Math.round(amount*p.allocation/100);
+    assigned+=part;p.balance+=part;
+    data.transactions.push({id:(crypto.randomUUID?crypto.randomUUID():Date.now()+"")+i,type:"income",pocketId:p.id,amount:part,memo:"給料の振り分け",date:nowISO()});
+  });
+  save();salaryDialog.close();document.getElementById("salaryForm").reset();showToast("給料を振り分けました");
+};
+
+const transferDialog=document.getElementById("transferDialog");
+document.getElementById("transferBtn").onclick=()=>transferDialog.showModal();
+document.getElementById("transferSaveBtn").onclick=e=>{
+  e.preventDefault();
+  const from=document.getElementById("fromPocket").value,to=document.getElementById("toPocket").value;
+  const amount=Math.round(Number(document.getElementById("transferAmount").value));
+  if(from===to){alert("移動元と移動先を変えてください。");return}
+  if(!amount||amount<=0)return;
+  const a=getPocket(from),b=getPocket(to);
+  if(a.balance<amount && !confirm("移動元の残高を超えます。続けますか？"))return;
+  a.balance-=amount;b.balance+=amount;
+  const d=nowISO();
+  data.transactions.push({id:(crypto.randomUUID?crypto.randomUUID():Date.now()+"")+"a",type:"expense",pocketId:a.id,amount,memo:`${b.name}へ移動`,date:d});
+  data.transactions.push({id:(crypto.randomUUID?crypto.randomUUID():Date.now()+"")+"b",type:"income",pocketId:b.id,amount,memo:`${a.name}から移動`,date:d});
+  save();transferDialog.close();document.getElementById("transferForm").reset();showToast("移動しました");
+};
+
+document.getElementById("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="moneybox-backup.json";a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  try{
+    const obj=JSON.parse(await file.text());
+    if(!obj.pockets||!obj.transactions)throw new Error();
+    data=obj;save();showToast("読み込みました");
+  }catch{alert("バックアップファイルを読み込めませんでした。")}
+  e.target.value="";
+};
+document.getElementById("resetBtn").onclick=()=>{
+  if(confirm("残高と履歴をすべて削除して初期状態に戻しますか？")){
+    data=clone(DEFAULT);save();showToast("初期状態に戻しました");
+  }
+};
+
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+render();
+</script>
+</body>
+</html>
