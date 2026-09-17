@@ -1,5 +1,5 @@
-const CACHE="moneybox-cache-v8";
-const CORE=["./","./index.html","./manifest.webmanifest"];
+const CACHE="moneybox-cache-v9";
+const CORE=["./","./index.html","./manifest.webmanifest","./apple-touch-icon.png","./icon-192.png","./icon-512.png","./favicon-32.png"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
