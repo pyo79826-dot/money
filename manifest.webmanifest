@@ -2,6 +2,7 @@
   "name": "お金箱",
   "short_name": "お金箱",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f3f4f7",
   "theme_color": "#111111",
