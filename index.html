@@ -87,7 +87,7 @@
     .field input,.field select{width:100%;border:1px solid var(--line);background:white;padding:13px 14px;border-radius:14px;outline:none}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
-    .modal-actions button{border:0;border-radius:15px;padding:13px;font-weight:850}
+    .modal-actions button{border:0;border-radius:15px;padding:14px;min-height:48px;font-weight:850}
     .cancel{background:var(--chip)}.save{background:#111;color:white}
     .modal-danger{width:100%;margin-top:10px;border:0;border-radius:15px;padding:12px;font-weight:800;background:#fff0ef;color:var(--bad)}
     .hint{font-size:12px;color:var(--muted);line-height:1.55}
@@ -145,7 +145,7 @@
       <input id="importFile" type="file" accept="application/json" hidden>
       <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
     </div>
-    <div class="version">お金箱 v2.1</div>
+    <div class="version">お金箱 v2.2</div>
   </section>
 </main>
 
@@ -164,7 +164,7 @@
   </div>
   <div class="field"><label>金額</label><input id="txAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="3000" required></div>
   <div class="field"><label>メモ</label><input id="txMemo" maxlength="40" placeholder="ゲーム、プレゼントなど"></div>
-  <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="txSaveBtn" value="default">保存</button></div>
+  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="transactionDialog">戻る</button><button class="save" id="txSaveBtn" value="default">保存</button></div>
 </form></dialog>
 
 <dialog id="salaryDialog"><form method="dialog" class="modal" id="salaryForm">
@@ -178,7 +178,7 @@
     <div class="hint">ここで割合を変えると、その設定を保存して次回以降にも使います。</div>
   </div>
   <div id="salaryPreview" class="hint"></div>
-  <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="salarySaveBtn" value="default">振り分ける</button></div>
+  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="salaryDialog">戻る</button><button class="save" id="salarySaveBtn" value="default">振り分ける</button></div>
 </form></dialog>
 
 <dialog id="transferDialog"><form method="dialog" class="modal" id="transferForm">
@@ -189,7 +189,7 @@
     <div class="field"><label>移動先</label><select id="toPocket"></select></div>
   </div>
   <div class="field"><label>金額</label><input id="transferAmount" type="number" min="1" step="1" inputmode="numeric" required></div>
-  <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="transferSaveBtn" value="default">移動する</button></div>
+  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="transferDialog">戻る</button><button class="save" id="transferSaveBtn" value="default">移動する</button></div>
 </form></dialog>
 
 <dialog id="pocketDialog"><form method="dialog" class="modal" id="pocketForm">
@@ -201,7 +201,7 @@
     <div class="field"><label>給料の振り分け率</label><input id="pocketAllocation" type="number" min="0" max="100" step="1" value="0"></div>
   </div>
   <div class="field"><label>名前</label><input id="pocketName" maxlength="20" placeholder="旅行" required></div>
-  <div class="modal-actions"><button class="cancel" value="cancel">キャンセル</button><button class="save" id="pocketSaveBtn" value="default">保存</button></div>
+  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="pocketDialog">戻る</button><button class="save" id="pocketSaveBtn" value="default">保存</button></div>
   <button type="button" class="modal-danger" id="pocketDeleteBtn" hidden>この箱を削除</button>
 </form></dialog>
 
@@ -316,8 +316,6 @@ function renderAllocation(){
 }
 
 
-let appHistoryLock=false;
-
 function getOpenDialog(){
   return [...document.querySelectorAll("dialog")].find(d=>d.open)||null;
 }
@@ -325,72 +323,38 @@ function getOpenDialog(){
 function openAppDialog(dialog){
   if(!dialog || dialog.open)return;
   dialog.showModal();
-  if(!appHistoryLock){
-    history.pushState({moneybox:"dialog",id:dialog.id},"");
-  }
 }
 
-function closeAppDialog(dialog,goBack=false){
+function closeAppDialog(dialog){
   if(!dialog || !dialog.open)return;
-  const shouldBack=goBack && history.state && history.state.moneybox==="dialog";
-  if(shouldBack)appHistoryLock=true;
   dialog.close();
-  if(shouldBack){
-    history.back();
-    setTimeout(()=>{appHistoryLock=false},50);
-  }
 }
 
 document.querySelectorAll("[data-close-dialog]").forEach(btn=>{
   btn.addEventListener("click",()=>{
     const dialog=document.getElementById(btn.dataset.closeDialog);
-    closeAppDialog(dialog,true);
+    closeAppDialog(dialog);
   });
 });
 
 document.querySelectorAll("dialog").forEach(dialog=>{
   dialog.addEventListener("cancel",e=>{
     e.preventDefault();
-    closeAppDialog(dialog,true);
+    closeAppDialog(dialog);
   });
-  dialog.addEventListener("close",()=>{
-    // Native form method="dialog" cancel buttons can close directly.
-    if(history.state && history.state.moneybox==="dialog" && !appHistoryLock){
-      appHistoryLock=true;
-      history.back();
-      setTimeout(()=>{appHistoryLock=false},50);
-    }
+  dialog.addEventListener("click",e=>{
+    if(e.target===dialog) closeAppDialog(dialog);
   });
 });
 
-window.addEventListener("popstate",()=>{
-  const open=getOpenDialog();
-  if(open){
-    appHistoryLock=true;
-    open.close();
-    setTimeout(()=>{appHistoryLock=false},50);
-  }
-});
-
-function showPage(pageId,push=false){
+function showPage(pageId){
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===pageId));
   document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===pageId));
-  if(push)history.pushState({moneybox:"page",page:pageId},"");
 }
 
 document.querySelectorAll(".nav button").forEach(btn=>btn.addEventListener("click",()=>{
-  const current=document.querySelector(".page.active")?.id;
-  if(current===btn.dataset.page)return;
-  showPage(btn.dataset.page,true);
+  showPage(btn.dataset.page);
 }));
-
-window.addEventListener("popstate",e=>{
-  if(e.state && e.state.moneybox==="page" && e.state.page){
-    showPage(e.state.page,false);
-  }else if(!getOpenDialog()){
-    showPage("homePage",false);
-  }
-});
 
 document.querySelectorAll(".filterbtn").forEach(btn=>btn.addEventListener("click",()=>{
   historyFilter=btn.dataset.filter;
@@ -410,7 +374,7 @@ document.getElementById("txSaveBtn").onclick=e=>{
   if(type==="expense"&&p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
   p.balance+=type==="income"?amount:-amount;
   data.transactions.push({id:uid(),type,pocketId:pid,pocketName:p.name,amount,memo,date:nowISO()});
-  save();closeAppDialog(txDialog,true);document.getElementById("transactionForm").reset();showToast("保存しました");
+  save();closeAppDialog(txDialog);document.getElementById("transactionForm").reset();showToast("保存しました");
 };
 
 const salaryDialog=document.getElementById("salaryDialog");
@@ -480,7 +444,7 @@ document.getElementById("salarySaveBtn").onclick=e=>{
   });
   data.settings.lastSalary=amount;
   save();
-  closeAppDialog(salaryDialog,true);
+  closeAppDialog(salaryDialog);
   showToast("給料を振り分けました");
 };
 
@@ -496,7 +460,7 @@ document.getElementById("transferSaveBtn").onclick=e=>{
   a.balance-=amount;b.balance+=amount;const d=nowISO();
   data.transactions.push({id:uid(),type:"expense",pocketId:a.id,pocketName:a.name,amount,memo:`${b.name}へ移動`,date:d});
   data.transactions.push({id:uid(),type:"income",pocketId:b.id,pocketName:b.name,amount,memo:`${a.name}から移動`,date:d});
-  save();closeAppDialog(transferDialog,true);document.getElementById("transferForm").reset();showToast("移動しました");
+  save();closeAppDialog(transferDialog);document.getElementById("transferForm").reset();showToast("移動しました");
 };
 
 const pocketDialog=document.getElementById("pocketDialog");
@@ -530,14 +494,14 @@ document.getElementById("pocketSaveBtn").onclick=e=>{
   if(id){
     const p=getPocket(id);if(!p)return;p.name=name;p.emoji=emoji;p.allocation=allocation;
   }else data.pockets.push({id:uid(),name,emoji,balance:0,allocation});
-  save();closeAppDialog(pocketDialog,true);showToast(id?"変更しました":"追加しました");
+  save();closeAppDialog(pocketDialog);showToast(id?"変更しました":"追加しました");
 };
 document.getElementById("pocketDeleteBtn").onclick=()=>{
   const id=document.getElementById("editPocketId").value,p=getPocket(id);if(!p)return;
   if(p.balance!==0){alert("残高が0円の箱だけ削除できます。先に別の箱へ移動してください。");return}
   if(!confirm(`「${p.name}」を削除しますか？`))return;
   data.pockets=data.pockets.filter(x=>x.id!==id);
-  save();closeAppDialog(pocketDialog,true);showToast("削除しました");
+  save();closeAppDialog(pocketDialog);showToast("削除しました");
 };
 
 document.getElementById("exportBtn").onclick=()=>{
@@ -557,8 +521,6 @@ document.getElementById("importFile").onchange=async e=>{
 document.getElementById("resetBtn").onclick=()=>{
   if(confirm("残高と履歴をすべて削除して初期状態に戻しますか？")){data=clone(DEFAULT);save();showToast("初期状態に戻しました")}
 };
-
-if(!history.state)history.replaceState({moneybox:"page",page:"homePage"},"");
 
 if("serviceWorker" in navigator&&location.protocol!=="file:"){
   window.addEventListener("load",async()=>{
