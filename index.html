@@ -66,7 +66,46 @@
     .alloc-total.ok{color:var(--good)} .alloc-total.bad{color:var(--bad)}
     .danger{color:var(--bad)}
     .version{color:var(--muted);font-size:12px;text-align:center;margin:20px 0 0}
-    .nav{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(700px,calc(100% - 24px));background:rgba(255,255,255,.94);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(3,1fr);padding:8px;border-radius:24px;box-shadow:0 10px 35px rgba(0,0,0,.14);z-index:20}
+
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .stat-card{background:var(--card);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+    .stat-label{font-size:12px;color:var(--muted);font-weight:750}
+    .stat-value{font-size:23px;font-weight:900;margin-top:5px}
+    .chart-card{background:var(--card);border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+    .chart-title{font-size:17px;font-weight:850;margin-bottom:12px}
+    .pie-wrap{display:grid;grid-template-columns:160px 1fr;gap:18px;align-items:center}
+    .pie{width:160px;height:160px;border-radius:50%;position:relative;background:conic-gradient(#ddd 0 100%)}
+    .pie::after{content:"";position:absolute;inset:38px;border-radius:50%;background:var(--card)}
+    .legend{display:grid;gap:9px}
+    .legend-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;font-size:13px}
+    .legend-dot{width:11px;height:11px;border-radius:50%}
+    .legend-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .legend-value{font-weight:800}
+    .calendar-card{background:var(--card);border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+    .calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .calendar-title{font-weight:900;font-size:18px}
+    .calendar-nav{border:0;background:var(--chip);border-radius:12px;width:40px;height:40px;font-size:20px;font-weight:900}
+    .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .dow{text-align:center;font-size:11px;color:var(--muted);font-weight:800;padding:3px 0 6px}
+    .day{border:0;background:var(--chip);border-radius:12px;min-height:62px;padding:7px 6px;text-align:left;display:flex;flex-direction:column;gap:3px}
+    .day.other{opacity:.35}
+    .day.selected{outline:2px solid #111;background:#fff}
+    .daynum{font-size:12px;font-weight:850}
+    .daymoney{font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .daymoney.in{color:var(--good)} .daymoney.out{color:var(--bad)}
+    .day-detail{background:var(--card);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+    .day-detail-title{font-weight:900;margin-bottom:10px}
+    .day-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .day-summary .pill{background:var(--chip);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800}
+    .allocation-breakdown{font-size:12px;color:var(--muted);margin-top:4px}
+    @media(max-width:560px){
+      .pie-wrap{grid-template-columns:1fr;justify-items:center}
+      .legend{width:100%}
+      .day{min-height:56px;padding:6px 5px}
+      .daymoney{font-size:8px}
+    }
+
+    .nav{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(700px,calc(100% - 24px));background:rgba(255,255,255,.94);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(4,1fr);padding:8px;border-radius:24px;box-shadow:0 10px 35px rgba(0,0,0,.14);z-index:20}
     .nav button{border:0;background:transparent;border-radius:17px;padding:11px 4px;font-weight:800;color:#777}
     .nav button.active{background:#111;color:#fff}
     .page{display:none}.page.active{display:block}
@@ -125,6 +164,46 @@
     <div id="historyList" class="list"></div>
   </section>
 
+
+  <section id="analyticsPage" class="page">
+    <div class="topbar"><h1>REPORT</h1><span></span></div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">今月の収入</div>
+        <div class="stat-value" id="reportIncome">¥0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の支出</div>
+        <div class="stat-value" id="reportExpense">¥0</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">今月使った金額</div>
+      <div id="pieEmpty" class="empty" style="display:none">今月の支出はまだありません</div>
+      <div id="pieWrap" class="pie-wrap">
+        <div id="expensePie" class="pie" aria-label="今月の支出円グラフ"></div>
+        <div id="expenseLegend" class="legend"></div>
+      </div>
+    </div>
+
+    <div class="calendar-card">
+      <div class="calendar-head">
+        <button type="button" class="calendar-nav" id="prevMonthBtn" aria-label="前の月">‹</button>
+        <div class="calendar-title" id="calendarTitle"></div>
+        <button type="button" class="calendar-nav" id="nextMonthBtn" aria-label="次の月">›</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="day-detail">
+      <div class="day-detail-title" id="dayDetailTitle">日付を選択</div>
+      <div class="day-summary" id="daySummary"></div>
+      <div class="list" id="dayTransactions"></div>
+    </div>
+  </section>
+
   <section id="settingsPage" class="page">
     <div class="topbar"><h1>設定</h1><span></span></div>
     <div class="settings-card">
@@ -145,13 +224,14 @@
       <input id="importFile" type="file" accept="application/json" hidden>
       <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
     </div>
-    <div class="version">VAULT v2.3</div>
+    <div class="version">VAULT v2.4</div>
   </section>
 </main>
 
 <nav class="nav">
   <button data-page="homePage" class="active">残高</button>
   <button data-page="historyPage">履歴</button>
+  <button data-page="analyticsPage">集計</button>
   <button data-page="settingsPage">設定</button>
 </nav>
 
@@ -231,6 +311,45 @@ function load(){
     if(!Array.isArray(d.pockets)||!Array.isArray(d.transactions))return clone(DEFAULT);
     d.settings=d.settings||{lastSalary:0};
     d.pockets.forEach(p=>{if(typeof p.allocation!=="number")p.allocation=0;if(typeof p.balance!=="number")p.balance=0});
+
+    // v2.4 migration: old auto-distribution history was stored as one row per pocket.
+    // Collapse salary rows that were recorded within 3 seconds of each other into one history item.
+    if(!d.settings.salaryHistoryMigratedV24){
+      const sorted=[...d.transactions].sort((a,b)=>new Date(a.date)-new Date(b.date));
+      const merged=[];
+      let i=0;
+      while(i<sorted.length){
+        const t=sorted[i];
+        const oldSalary=t.type==="income" && t.memo==="給料の振り分け" && t.pocketId;
+        if(!oldSalary){merged.push(t);i++;continue}
+
+        const group=[t];
+        let j=i+1;
+        while(j<sorted.length){
+          const n=sorted[j];
+          const close=Math.abs(new Date(n.date)-new Date(group[0].date))<=3000;
+          const sameKind=n.type==="income" && n.memo==="給料の振り分け" && n.pocketId;
+          if(close && sameKind){group.push(n);j++}else break;
+        }
+        if(group.length>1){
+          const allocations=group.map(g=>{
+            const p=d.pockets.find(x=>x.id===g.pocketId);
+            return {pocketId:g.pocketId,name:g.pocketName||(p?p.name:"削除済み"),emoji:p?p.emoji:"💰",amount:Number(g.amount)||0,allocation:p?p.allocation:0};
+          });
+          merged.push({
+            id:group[0].id||uid(),
+            type:"income",
+            amount:group.reduce((s,g)=>s+(Number(g.amount)||0),0),
+            memo:"給料（自動振り分け）",
+            allocations,
+            date:group[0].date
+          });
+        }else merged.push(t);
+        i=j;
+      }
+      d.transactions=merged.sort((a,b)=>new Date(a.date)-new Date(b.date));
+      d.settings.salaryHistoryMigratedV24=true;
+    }
     return d;
   }catch{return clone(DEFAULT)}
 }
@@ -242,6 +361,23 @@ function getPocket(id){return data.pockets.find(p=>p.id===id)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1500)}
 function allocationTotal(){return data.pockets.reduce((s,p)=>s+(Number(p.allocation)||0),0)}
+
+function txDisplayAmount(t){
+  return Number(t.amount)||0;
+}
+function txDateKey(t){
+  const d=new Date(t.date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function isSalaryGroup(t){
+  return t.type==="income" && Array.isArray(t.allocations) && t.allocations.length>0;
+}
+function pocketNameForTx(t){
+  if(isSalaryGroup(t)) return "自動振り分け";
+  const p=getPocket(t.pocketId);
+  return p?p.name:(t.pocketName||"削除済み");
+}
+
 
 function render(){
   const total=data.pockets.reduce((s,p)=>s+p.balance,0);
@@ -275,6 +411,7 @@ function render(){
   renderHistory();
   renderSelects();
   renderAllocation();
+  renderAnalytics();
 }
 
 function renderHistory(){
@@ -285,8 +422,11 @@ function renderHistory(){
   txs.forEach(t=>{
     const p=getPocket(t.pocketId), sign=t.type==="income"?"+":"−";
     const row=document.createElement("div");row.className="history-row";
+    const allocText=isSalaryGroup(t)
+      ? `<div class="allocation-breakdown">${t.allocations.map(a=>`${escapeHtml(a.emoji||"💰")} ${escapeHtml(a.name)} ${yen(a.amount)}`).join(" / ")}</div>`
+      : "";
     row.innerHTML=`<div><div class="history-title">${escapeHtml(t.memo||(t.type==="income"?"入金":"支出"))}</div>
-      <div class="history-meta">${p?escapeHtml(p.name):(t.pocketName?escapeHtml(t.pocketName):"削除済み")} ・ ${new Date(t.date).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div></div>
+      <div class="history-meta">${escapeHtml(pocketNameForTx(t))} ・ ${new Date(t.date).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>${allocText}</div>
       <div class="amount ${t.type==="income"?"plus":"minus"}">${sign}${yen(t.amount)}</div>`;
     hist.appendChild(row);
   });
@@ -436,12 +576,24 @@ document.getElementById("salarySaveBtn").onclick=e=>{
   data.pockets.forEach(p=>{p.allocation=alloc[p.id]||0});
   let assigned=0;
   const targets=data.pockets.filter(p=>p.allocation>0);
+  const breakdown=[];
   targets.forEach((p,i)=>{
     const part=i===targets.length-1?amount-assigned:Math.round(amount*p.allocation/100);
     assigned+=part;
     p.balance+=part;
-    data.transactions.push({id:uid(),type:"income",pocketId:p.id,pocketName:p.name,amount:part,memo:"給料の振り分け",date:nowISO()});
+    breakdown.push({pocketId:p.id,name:p.name,emoji:p.emoji||"💰",amount:part,allocation:p.allocation});
   });
+
+  // 履歴には「給料」として1件だけ残し、内訳はその中に保持する
+  data.transactions.push({
+    id:uid(),
+    type:"income",
+    amount,
+    memo:"給料（自動振り分け）",
+    allocations:breakdown,
+    date:nowISO()
+  });
+
   data.settings.lastSalary=amount;
   save();
   closeAppDialog(salaryDialog);
@@ -503,6 +655,178 @@ document.getElementById("pocketDeleteBtn").onclick=()=>{
   data.pockets=data.pockets.filter(x=>x.id!==id);
   save();closeAppDialog(pocketDialog);showToast("削除しました");
 };
+
+
+let calendarCursor=new Date();
+calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
+let selectedDateKey=txDateKey({date:nowISO()});
+
+function colorForIndex(i){
+  const colors=["#25262a","#5b5c62","#85868d","#aaabb0","#c8c9cd","#3f4045","#72737a","#999aa0"];
+  return colors[i%colors.length];
+}
+
+function renderAnalytics(){
+  const now=new Date();
+  const mk=monthKey(now);
+  const monthTx=data.transactions.filter(t=>monthKey(new Date(t.date))===mk);
+  const income=monthTx.filter(t=>t.type==="income").reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const expense=monthTx.filter(t=>t.type==="expense").reduce((s,t)=>s+(Number(t.amount)||0),0);
+
+  document.getElementById("reportIncome").textContent=yen(income);
+  document.getElementById("reportExpense").textContent=yen(expense);
+
+  const byPocket={};
+  monthTx.filter(t=>t.type==="expense").forEach(t=>{
+    const name=pocketNameForTx(t);
+    byPocket[name]=(byPocket[name]||0)+(Number(t.amount)||0);
+  });
+  renderExpensePie(byPocket);
+  renderCalendar();
+  renderSelectedDay();
+}
+
+function renderExpensePie(byPocket){
+  const entries=Object.entries(byPocket).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  const pie=document.getElementById("expensePie");
+  const legend=document.getElementById("expenseLegend");
+  const wrap=document.getElementById("pieWrap");
+  const empty=document.getElementById("pieEmpty");
+  legend.innerHTML="";
+
+  if(!total){
+    wrap.style.display="none";
+    empty.style.display="block";
+    return;
+  }
+  empty.style.display="none";
+  wrap.style.display="grid";
+
+  let cursor=0;
+  const stops=[];
+  entries.forEach(([name,value],i)=>{
+    const start=cursor;
+    const end=cursor+(value/total)*100;
+    const color=colorForIndex(i);
+    stops.push(`${color} ${start}% ${end}%`);
+    cursor=end;
+
+    const row=document.createElement("div");
+    row.className="legend-row";
+    row.innerHTML=`<span class="legend-dot" style="background:${color}"></span>
+      <span class="legend-name">${escapeHtml(name)}</span>
+      <span class="legend-value">${yen(value)} (${Math.round(value/total*100)}%)</span>`;
+    legend.appendChild(row);
+  });
+  pie.style.background=`conic-gradient(${stops.join(",")})`;
+}
+
+function monthDateKey(year,month,day){
+  return `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+
+function renderCalendar(){
+  const grid=document.getElementById("calendarGrid");
+  const y=calendarCursor.getFullYear(), m=calendarCursor.getMonth();
+  document.getElementById("calendarTitle").textContent=`${y}年 ${m+1}月`;
+  grid.innerHTML="";
+
+  ["日","月","火","水","木","金","土"].forEach(d=>{
+    const el=document.createElement("div");el.className="dow";el.textContent=d;grid.appendChild(el);
+  });
+
+  const first=new Date(y,m,1);
+  const last=new Date(y,m+1,0);
+  const startOffset=first.getDay();
+  const prevLast=new Date(y,m,0).getDate();
+  const cells=42;
+
+  const totals={};
+  data.transactions.forEach(t=>{
+    const key=txDateKey(t);
+    if(!totals[key])totals[key]={income:0,expense:0};
+    totals[key][t.type]=(totals[key][t.type]||0)+(Number(t.amount)||0);
+  });
+
+  for(let i=0;i<cells;i++){
+    let cy=y, cm=m, day=i-startOffset+1, other=false;
+    if(day<1){
+      other=true;
+      cm=m-1;
+      if(cm<0){cm=11;cy=y-1}
+      day=prevLast+day;
+    }else if(day>last.getDate()){
+      other=true;
+      day=day-last.getDate();
+      cm=m+1;
+      if(cm>11){cm=0;cy=y+1}
+    }
+    const key=monthDateKey(cy,cm,day);
+    const sums=totals[key]||{income:0,expense:0};
+
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="day"+(other?" other":"")+(selectedDateKey===key?" selected":"");
+    btn.dataset.date=key;
+    btn.innerHTML=`<span class="daynum">${day}</span>
+      ${sums.income?`<span class="daymoney in">+${yen(sums.income)}</span>`:""}
+      ${sums.expense?`<span class="daymoney out">−${yen(sums.expense)}</span>`:""}`;
+    btn.addEventListener("click",()=>{
+      selectedDateKey=key;
+      calendarCursor=new Date(cy,cm,1);
+      renderCalendar();
+      renderSelectedDay();
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function renderSelectedDay(){
+  const title=document.getElementById("dayDetailTitle");
+  const summary=document.getElementById("daySummary");
+  const list=document.getElementById("dayTransactions");
+  const [y,m,d]=selectedDateKey.split("-").map(Number);
+  title.textContent=`${y}年${m}月${d}日`;
+
+  const txs=data.transactions
+    .filter(t=>txDateKey(t)===selectedDateKey)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const inc=txs.filter(t=>t.type==="income").reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const out=txs.filter(t=>t.type==="expense").reduce((s,t)=>s+(Number(t.amount)||0),0);
+
+  summary.innerHTML=`<span class="pill">入金 ${yen(inc)}</span><span class="pill">支出 ${yen(out)}</span>`;
+  list.innerHTML="";
+  if(!txs.length){
+    list.innerHTML='<div class="empty">この日の入出金はありません</div>';
+    return;
+  }
+
+  txs.forEach(t=>{
+    const sign=t.type==="income"?"+":"−";
+    const allocText=isSalaryGroup(t)
+      ? `<div class="allocation-breakdown">${t.allocations.map(a=>`${escapeHtml(a.emoji||"💰")} ${escapeHtml(a.name)} ${yen(a.amount)}`).join(" / ")}</div>`
+      : "";
+    const row=document.createElement("div");
+    row.className="history-row";
+    row.innerHTML=`<div><div class="history-title">${escapeHtml(t.memo||(t.type==="income"?"入金":"支出"))}</div>
+      <div class="history-meta">${escapeHtml(pocketNameForTx(t))} ・ ${new Date(t.date).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}</div>${allocText}</div>
+      <div class="amount ${t.type==="income"?"plus":"minus"}">${sign}${yen(t.amount)}</div>`;
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("prevMonthBtn").onclick=()=>{
+  calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);
+  selectedDateKey=monthDateKey(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
+  renderAnalytics();
+};
+document.getElementById("nextMonthBtn").onclick=()=>{
+  calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);
+  selectedDateKey=monthDateKey(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
+  renderAnalytics();
+};
+
 
 document.getElementById("exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
