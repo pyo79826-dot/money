@@ -1,4 +1,4 @@
-const CACHE="moneybox-cache-v4";
+const CACHE="moneybox-cache-v5";
 const CORE=["./","./index.html","./manifest.webmanifest"];
 
 self.addEventListener("install",event=>{

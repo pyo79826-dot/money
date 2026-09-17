@@ -1,11 +1,11 @@
 {
-  "name": "お金箱",
-  "short_name": "お金箱",
+  "name": "VAULT",
+  "short_name": "VAULT",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f3f4f7",
   "theme_color": "#111111",
   "lang": "ja",
-  "description": "用途別に残高を持ち越して管理するシンプルなお金管理アプリ"
+  "description": "用途別の残高を持ち越して管理するシンプルなマネーアプリ"
 }

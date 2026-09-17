@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#111111">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="お金箱">
+  <meta name="apple-mobile-web-app-title" content="VAULT">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>お金箱</title>
+  <title>VAULT</title>
   <style>
     :root{
       --bg:#f3f4f7;--card:#fff;--text:#111;--muted:#8b8b93;--line:#e5e6ea;
@@ -22,7 +22,7 @@
     button{cursor:pointer}
     .app{max-width:760px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 18px 28px}
     .topbar{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 18px}
-    h1{font-size:38px;line-height:1;margin:0;font-weight:850;letter-spacing:-.04em}
+    h1{font-size:38px;line-height:1;margin:0;font-weight:900;letter-spacing:.06em}
     .iconbtn{border:0;background:var(--card);width:48px;height:48px;border-radius:50%;font-size:29px;box-shadow:var(--shadow)}
     .summary{background:linear-gradient(135deg,#111,#303036);color:white;border-radius:28px;padding:22px;box-shadow:var(--shadow);margin-bottom:14px}
     .summary .label{opacity:.7;font-size:14px}
@@ -86,9 +86,9 @@
     .field label{font-size:13px;color:var(--muted);font-weight:750}
     .field input,.field select{width:100%;border:1px solid var(--line);background:white;padding:13px 14px;border-radius:14px;outline:none}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+    .modal-actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:18px}
     .modal-actions button{border:0;border-radius:15px;padding:14px;min-height:48px;font-weight:850}
-    .cancel{background:var(--chip)}.save{background:#111;color:white}
+    .save{background:#111;color:white}
     .modal-danger{width:100%;margin-top:10px;border:0;border-radius:15px;padding:12px;font-weight:800;background:#fff0ef;color:var(--bad)}
     .hint{font-size:12px;color:var(--muted);line-height:1.55}
     .preview-list{display:grid;gap:5px;margin-top:8px}
@@ -100,7 +100,7 @@
 <body>
 <main class="app">
   <section id="homePage" class="page active">
-    <div class="topbar"><h1>お金箱</h1><button class="iconbtn" id="quickAddBtn" aria-label="取引を追加">＋</button></div>
+    <div class="topbar"><h1>VAULT</h1><button class="iconbtn" id="quickAddBtn" aria-label="取引を追加">＋</button></div>
     <div class="summary">
       <div class="label">合計残高</div>
       <div class="value" id="totalBalance">¥0</div>
@@ -145,7 +145,7 @@
       <input id="importFile" type="file" accept="application/json" hidden>
       <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
     </div>
-    <div class="version">お金箱 v2.2</div>
+    <div class="version">VAULT v2.3</div>
   </section>
 </main>
 
@@ -164,7 +164,7 @@
   </div>
   <div class="field"><label>金額</label><input id="txAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="3000" required></div>
   <div class="field"><label>メモ</label><input id="txMemo" maxlength="40" placeholder="ゲーム、プレゼントなど"></div>
-  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="transactionDialog">戻る</button><button class="save" id="txSaveBtn" value="default">保存</button></div>
+  <div class="modal-actions"><button class="save" id="txSaveBtn" value="default">保存</button></div>
 </form></dialog>
 
 <dialog id="salaryDialog"><form method="dialog" class="modal" id="salaryForm">
@@ -178,7 +178,7 @@
     <div class="hint">ここで割合を変えると、その設定を保存して次回以降にも使います。</div>
   </div>
   <div id="salaryPreview" class="hint"></div>
-  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="salaryDialog">戻る</button><button class="save" id="salarySaveBtn" value="default">振り分ける</button></div>
+  <div class="modal-actions"><button class="save" id="salarySaveBtn" value="default">振り分ける</button></div>
 </form></dialog>
 
 <dialog id="transferDialog"><form method="dialog" class="modal" id="transferForm">
@@ -189,7 +189,7 @@
     <div class="field"><label>移動先</label><select id="toPocket"></select></div>
   </div>
   <div class="field"><label>金額</label><input id="transferAmount" type="number" min="1" step="1" inputmode="numeric" required></div>
-  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="transferDialog">戻る</button><button class="save" id="transferSaveBtn" value="default">移動する</button></div>
+  <div class="modal-actions"><button class="save" id="transferSaveBtn" value="default">移動する</button></div>
 </form></dialog>
 
 <dialog id="pocketDialog"><form method="dialog" class="modal" id="pocketForm">
@@ -201,7 +201,7 @@
     <div class="field"><label>給料の振り分け率</label><input id="pocketAllocation" type="number" min="0" max="100" step="1" value="0"></div>
   </div>
   <div class="field"><label>名前</label><input id="pocketName" maxlength="20" placeholder="旅行" required></div>
-  <div class="modal-actions"><button type="button" class="cancel" data-close-dialog="pocketDialog">戻る</button><button class="save" id="pocketSaveBtn" value="default">保存</button></div>
+  <div class="modal-actions"><button class="save" id="pocketSaveBtn" value="default">保存</button></div>
   <button type="button" class="modal-danger" id="pocketDeleteBtn" hidden>この箱を削除</button>
 </form></dialog>
 
