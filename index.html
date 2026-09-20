@@ -29,6 +29,18 @@
     .summary .value{font-size:36px;font-weight:850;letter-spacing:-.04em;margin:5px 0 12px}
     .summary .sub{display:flex;gap:9px;flex-wrap:wrap;font-size:13px;opacity:.9}
     .chip{background:rgba(255,255,255,.12);padding:7px 10px;border-radius:999px}
+    .commitment-card{background:var(--card);border-radius:20px;padding:15px 16px;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+    .commitment-main{min-width:0}
+    .commitment-title{font-weight:850;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .commitment-meta{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+    .commitment-due{display:inline-block;margin-right:5px;font-weight:800}
+    .commitment-due.overdue{color:var(--bad)}
+    .commitment-due.today{color:var(--warn)}
+    .commitment-amount{text-align:right;font-size:17px;font-weight:900;color:var(--bad)}
+    .commitment-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:8px;grid-column:1 / -1}
+    .commitment-actions button{border:0;border-radius:12px;padding:9px 11px;font-weight:800}
+    .commitment-pay{background:#111;color:#fff}
+    .commitment-edit{background:var(--chip)}
     .distribution{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#dfe1e6;margin:0 2px 18px}
     .distribution span{min-width:0;transition:width .25s ease}
     .distribution span:nth-child(1){background:#6ea8fe}
@@ -113,7 +125,7 @@
     .day.selected{outline:2px solid #111;background:#fff}
     .daynum{font-size:12px;font-weight:850}
     .daymoney{font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .daymoney.in{color:var(--good)} .daymoney.out{color:var(--bad)}
+    .daymoney.in{color:var(--good)} .daymoney.out{color:var(--bad)} .daymoney.planned{color:var(--warn)}
     .day-detail{background:var(--card);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
     .day-detail-title{font-weight:900;margin-bottom:10px}
     .day-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
@@ -164,13 +176,15 @@
     <div class="summary">
       <div class="label">合計残高</div>
       <div class="value" id="totalBalance">¥0</div>
-      <div class="sub"><span class="chip" id="monthIn">今月の入金 ¥0</span><span class="chip" id="monthOut">今月の支出 ¥0</span></div>
+      <div class="sub"><span class="chip" id="monthIn">今月の入金 ¥0</span><span class="chip" id="monthOut">今月の支出 ¥0</span><span class="chip" id="committedTotal">確定支出 ¥0</span><span class="chip" id="usableBalance">使える ¥0</span></div>
     </div>
     <div class="distribution" id="distribution" aria-label="残高の割合"></div>
     <div class="actions">
       <button class="action primary" id="salaryBtn">給料を振り分け</button>
       <button class="action" id="transferBtn">箱どうしで移動</button>
     </div>
+    <div class="section-head"><div class="section-title">確定支出・支払い予定</div><button class="textbtn" id="addCommitmentBtn">＋ 追加</button></div>
+    <div id="commitmentList" class="list"></div>
     <div class="section-head"><div class="section-title">用途別の残高</div><button class="textbtn" id="addPocketBtn">＋ 箱を追加</button></div>
     <div id="pocketList" class="list"></div>
     <div class="section-head"><div class="section-title">最近の動き</div><button class="textbtn" id="goHistoryBtn">すべて見る</button></div>
@@ -255,7 +269,7 @@
       <input id="importFile" type="file" accept="application/json" hidden>
       <div class="settings-row"><span class="danger">すべてのデータを削除</span><button class="smallbtn danger" id="resetBtn">削除</button></div>
     </div>
-    <div class="version">VAULT v2.6</div>
+    <div class="version">VAULT v2.7</div>
   </section>
 </main>
 
@@ -265,6 +279,28 @@
   <button data-page="analyticsPage">集計</button>
   <button data-page="settingsPage">設定</button>
 </nav>
+
+<dialog id="commitmentDialog"><form method="dialog" class="modal" id="commitmentForm">
+  <button type="button" class="modal-close" data-close-dialog="commitmentDialog" aria-label="閉じる">×</button>
+  <h2 id="commitmentDialogTitle">確定支出を追加</h2>
+  <input id="editCommitmentId" type="hidden">
+  <div class="field"><label>名前</label><input id="commitmentName" maxlength="40" placeholder="スマホ代、クレカ、返済など" required></div>
+  <div class="row2">
+    <div class="field"><label>種類</label><select id="commitmentKind"><option value="fixed">支払い予定</option><option value="debt">返済</option></select></div>
+    <div class="field"><label>支払う箱</label><select id="commitmentPocket"></select></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>次に払う金額</label><input id="commitmentAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="5000" required></div>
+    <div class="field"><label>支払日</label><input id="commitmentDueDate" type="date" required></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>繰り返し</label><select id="commitmentRepeat"><option value="none">1回のみ</option><option value="monthly">毎月</option></select></div>
+    <div class="field" id="remainingDebtField" style="display:none"><label>残り返済額</label><input id="commitmentRemainingDebt" type="number" min="1" step="1" inputmode="numeric" placeholder="30000"></div>
+  </div>
+  <p class="hint">登録した金額は「使えるお金」から先に差し引かれます。実際の残高は「支払い済み」を押すまで減りません。</p>
+  <div class="modal-actions"><button class="save" id="commitmentSaveBtn" value="default">保存</button></div>
+  <button type="button" class="modal-danger" id="commitmentDeleteBtn" hidden>この予定を削除</button>
+</form></dialog>
 
 <dialog id="transactionDialog"><form method="dialog" class="modal" id="transactionForm">
   <button type="button" class="modal-close" data-close-dialog="transactionDialog" aria-label="閉じる">×</button>
@@ -332,6 +368,7 @@ const DEFAULT={
     {id:"invest",name:"投資資金",emoji:"📈",balance:0,allocation:0,target:0,color:"#d4a5ff"}
   ],
   transactions:[],
+  commitments:[],
   settings:{lastSalary:0}
 };
 let data=load(), historyFilter="all";
@@ -349,7 +386,14 @@ function load(){
     const d=JSON.parse(raw);
     if(!Array.isArray(d.pockets)||!Array.isArray(d.transactions))return clone(DEFAULT);
     d.settings=d.settings||{lastSalary:0};
+    if(!Array.isArray(d.commitments))d.commitments=[];
     d.pockets.forEach((p,i)=>{if(typeof p.allocation!=="number")p.allocation=0;if(typeof p.balance!=="number")p.balance=0;if(typeof p.target!=="number")p.target=0;if(!p.color)p.color=defaultPocketColor(i)});
+    d.commitments.forEach(x=>{
+      x.amount=Math.max(0,Math.round(Number(x.amount)||0));
+      x.kind=x.kind==="debt"?"debt":"fixed";
+      x.repeat=x.repeat==="monthly"?"monthly":"none";
+      x.remainingDebt=x.remainingDebt==null?null:Math.max(0,Math.round(Number(x.remainingDebt)||0));
+    });
 
     // v2.4 migration: old auto-distribution history was stored as one row per pocket.
     // Collapse salary rows that were recorded within 3 seconds of each other into one history item.
@@ -400,6 +444,24 @@ function getPocket(id){return data.pockets.find(p=>p.id===id)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1500)}
 function allocationTotal(){return data.pockets.reduce((s,p)=>s+(Number(p.allocation)||0),0)}
+function getCommitment(id){return (data.commitments||[]).find(x=>x.id===id)}
+function commitmentTotal(){return (data.commitments||[]).reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0)}
+function todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function formatDateKey(key){
+  const parts=String(key||"").split("-").map(Number);
+  if(parts.length!==3||!parts[0]||!parts[1]||!parts[2])return "日付未設定";
+  return `${parts[0]}/${parts[1]}/${parts[2]}`;
+}
+function addOneMonthKey(key){
+  const [y,m,d]=String(key||todayKey()).split("-").map(Number);
+  const nextMonthStart=new Date(y,(m||1),1);
+  const lastDay=new Date(nextMonthStart.getFullYear(),nextMonthStart.getMonth()+1,0).getDate();
+  const result=new Date(nextMonthStart.getFullYear(),nextMonthStart.getMonth(),Math.min(d||1,lastDay));
+  return `${result.getFullYear()}-${String(result.getMonth()+1).padStart(2,"0")}-${String(result.getDate()).padStart(2,"0")}`;
+}
 
 function txDisplayAmount(t){
   return Number(t.amount)||0;
@@ -421,6 +483,12 @@ function pocketNameForTx(t){
 function render(){
   const total=data.pockets.reduce((s,p)=>s+p.balance,0);
   document.getElementById("totalBalance").textContent=yen(total);
+  const committed=commitmentTotal();
+  const usable=total-committed;
+  document.getElementById("committedTotal").textContent="確定支出 −"+yen(committed);
+  const usableEl=document.getElementById("usableBalance");
+  usableEl.textContent="使える "+yen(usable);
+  usableEl.style.background=usable<0?"rgba(255,110,110,.28)":"rgba(255,255,255,.12)";
   const mk=monthKey(), monthTx=data.transactions.filter(t=>monthKey(new Date(t.date))===mk);
   const inc=monthTx.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
   const out=monthTx.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
@@ -453,11 +521,47 @@ function render(){
     list.appendChild(el);
   });
 
+  renderCommitments();
   renderRecent();
   renderHistory();
   renderSelects();
   renderAllocation();
   renderAnalytics();
+}
+
+function renderCommitments(){
+  const box=document.getElementById("commitmentList");
+  if(!box)return;
+  box.innerHTML="";
+  const items=[...(data.commitments||[])].sort((a,b)=>String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
+  if(!items.length){
+    box.innerHTML='<div class="empty">確定している支払いはありません</div>';
+    return;
+  }
+  const today=todayKey();
+  items.forEach(x=>{
+    const p=getPocket(x.pocketId);
+    const overdue=x.dueDate&&x.dueDate<today;
+    const dueToday=x.dueDate===today;
+    const dueClass=overdue?"overdue":(dueToday?"today":"");
+    const dueLabel=overdue?"期限超過":(dueToday?"今日支払い":"支払日");
+    const debt=(x.kind==="debt"&&x.remainingDebt!=null)?` ・ 残り ${yen(x.remainingDebt)}`:"";
+    const repeat=x.repeat==="monthly"?" ・ 毎月":"";
+    const row=document.createElement("div");
+    row.className="commitment-card";
+    row.innerHTML=`<div class="commitment-main">
+        <div class="commitment-title">${x.kind==="debt"?"↩️ ":"📌 "}${escapeHtml(x.name||"支払い予定")}</div>
+        <div class="commitment-meta"><span class="commitment-due ${dueClass}">${dueLabel} ${formatDateKey(x.dueDate)}</span>・ ${escapeHtml(p?.name||"支払う箱なし")}${repeat}${debt}</div>
+      </div>
+      <div class="commitment-amount">−${yen(x.amount)}</div>
+      <div class="commitment-actions">
+        <button type="button" class="commitment-edit" data-edit-commitment="${x.id}">編集</button>
+        <button type="button" class="commitment-pay" data-pay-commitment="${x.id}">支払い済み</button>
+      </div>`;
+    box.appendChild(row);
+  });
+  box.querySelectorAll("[data-edit-commitment]").forEach(btn=>btn.onclick=()=>openCommitmentEditor(btn.dataset.editCommitment));
+  box.querySelectorAll("[data-pay-commitment]").forEach(btn=>btn.onclick=()=>payCommitment(btn.dataset.payCommitment));
 }
 
 function renderRecent(){
@@ -502,7 +606,7 @@ function renderHistory(){
 }
 
 function renderSelects(){
-  ["txPocket","fromPocket","toPocket"].forEach(id=>{
+  ["txPocket","fromPocket","toPocket","commitmentPocket"].forEach(id=>{
     const s=document.getElementById(id), old=s.value;s.innerHTML="";
     data.pockets.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=`${p.emoji||"💰"} ${p.name}`;s.appendChild(o)});
     if([...s.options].some(o=>o.value===old))s.value=old;
@@ -573,6 +677,95 @@ document.querySelectorAll(".filterbtn").forEach(btn=>btn.addEventListener("click
   document.querySelectorAll(".filterbtn").forEach(b=>b.classList.toggle("active",b===btn));
   renderHistory();
 }));
+
+const commitmentDialog=document.getElementById("commitmentDialog");
+function syncCommitmentKindFields(){
+  const isDebt=document.getElementById("commitmentKind").value==="debt";
+  document.getElementById("remainingDebtField").style.display=isDebt?"grid":"none";
+  if(isDebt && document.getElementById("commitmentRepeat").value==="none")document.getElementById("commitmentRepeat").value="monthly";
+}
+document.getElementById("commitmentKind").addEventListener("change",syncCommitmentKindFields);
+
+function openNewCommitment(){
+  if(!data.pockets.length){showToast("先にお金箱を追加してください");return}
+  document.getElementById("commitmentDialogTitle").textContent="確定支出を追加";
+  document.getElementById("editCommitmentId").value="";
+  document.getElementById("commitmentName").value="";
+  document.getElementById("commitmentKind").value="fixed";
+  document.getElementById("commitmentAmount").value="";
+  document.getElementById("commitmentDueDate").value=todayKey();
+  document.getElementById("commitmentRepeat").value="none";
+  document.getElementById("commitmentRemainingDebt").value="";
+  document.getElementById("commitmentDeleteBtn").hidden=true;
+  syncCommitmentKindFields();
+  openAppDialog(commitmentDialog);
+}
+function openCommitmentEditor(id){
+  const x=getCommitment(id);if(!x)return;
+  document.getElementById("commitmentDialogTitle").textContent="確定支出を編集";
+  document.getElementById("editCommitmentId").value=x.id;
+  document.getElementById("commitmentName").value=x.name||"";
+  document.getElementById("commitmentKind").value=x.kind||"fixed";
+  document.getElementById("commitmentPocket").value=x.pocketId||"";
+  document.getElementById("commitmentAmount").value=x.amount||"";
+  document.getElementById("commitmentDueDate").value=x.dueDate||todayKey();
+  document.getElementById("commitmentRepeat").value=x.repeat||"none";
+  document.getElementById("commitmentRemainingDebt").value=x.remainingDebt==null?"":x.remainingDebt;
+  document.getElementById("commitmentDeleteBtn").hidden=false;
+  syncCommitmentKindFields();
+  openAppDialog(commitmentDialog);
+}
+document.getElementById("addCommitmentBtn").onclick=openNewCommitment;
+document.getElementById("commitmentSaveBtn").onclick=e=>{
+  e.preventDefault();
+  const id=document.getElementById("editCommitmentId").value;
+  const name=document.getElementById("commitmentName").value.trim();
+  const kind=document.getElementById("commitmentKind").value==="debt"?"debt":"fixed";
+  const pocketId=document.getElementById("commitmentPocket").value;
+  const amount=Math.max(0,Math.round(Number(document.getElementById("commitmentAmount").value)||0));
+  const dueDate=document.getElementById("commitmentDueDate").value;
+  const repeat=document.getElementById("commitmentRepeat").value==="monthly"?"monthly":"none";
+  const debtRaw=document.getElementById("commitmentRemainingDebt").value;
+  const remainingDebt=kind==="debt"&&debtRaw!==""?Math.max(amount,Math.round(Number(debtRaw)||0)):null;
+  if(!name||!pocketId||!amount||!dueDate)return;
+  if(id){
+    const x=getCommitment(id);if(!x)return;
+    Object.assign(x,{name,kind,pocketId,amount,dueDate,repeat,remainingDebt});
+  }else{
+    data.commitments.push({id:uid(),name,kind,pocketId,amount,dueDate,repeat,remainingDebt,createdAt:nowISO()});
+  }
+  save();closeAppDialog(commitmentDialog);showToast(id?"変更しました":"支払い予定を追加しました");
+};
+document.getElementById("commitmentDeleteBtn").onclick=()=>{
+  const id=document.getElementById("editCommitmentId").value;
+  const x=getCommitment(id);if(!x)return;
+  if(!confirm(`「${x.name}」を削除しますか？`))return;
+  data.commitments=data.commitments.filter(v=>v.id!==id);
+  save();closeAppDialog(commitmentDialog);showToast("削除しました");
+};
+function payCommitment(id){
+  const x=getCommitment(id);if(!x)return;
+  const p=getPocket(x.pocketId);
+  const amount=Math.max(0,Math.round(Number(x.amount)||0));
+  if(!p){alert("支払うお金箱が見つかりません。編集して選び直してください。");return}
+  if(!amount)return;
+  if(!confirm(`「${x.name}」 ${yen(amount)} を支払い済みにしますか？`))return;
+  if(p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
+  p.balance-=amount;
+  data.transactions.push({id:uid(),type:"expense",pocketId:p.id,pocketName:p.name,amount,memo:x.name,date:nowISO(),commitmentId:x.id});
+  let debtFinished=false;
+  if(x.kind==="debt"&&x.remainingDebt!=null){
+    x.remainingDebt=Math.max(0,Number(x.remainingDebt)-amount);
+    debtFinished=x.remainingDebt<=0;
+  }
+  if(x.repeat==="monthly"&&!debtFinished){
+    x.dueDate=addOneMonthKey(x.dueDate||todayKey());
+  }else{
+    data.commitments=data.commitments.filter(v=>v.id!==x.id);
+  }
+  save();
+  showToast(debtFinished?"返済が完了しました":(x.repeat==="monthly"?"支払い済み・次月へ更新":"支払い済みにしました"));
+}
 
 const txDialog=document.getElementById("transactionDialog");
 function openTransaction(){if(!data.pockets.length){showToast("先にお金箱を追加してください");return}openAppDialog(txDialog)}
@@ -849,6 +1042,11 @@ function renderCalendar(){
     if(!totals[key])totals[key]={income:0,expense:0};
     totals[key][t.type]=(totals[key][t.type]||0)+(Number(t.amount)||0);
   });
+  const plannedTotals={};
+  (data.commitments||[]).forEach(x=>{
+    if(!x.dueDate)return;
+    plannedTotals[x.dueDate]=(plannedTotals[x.dueDate]||0)+(Number(x.amount)||0);
+  });
 
   for(let i=0;i<cells;i++){
     let cy=y, cm=m, day=i-startOffset+1, other=false;
@@ -865,6 +1063,7 @@ function renderCalendar(){
     }
     const key=monthDateKey(cy,cm,day);
     const sums=totals[key]||{income:0,expense:0};
+    const planned=plannedTotals[key]||0;
 
     const btn=document.createElement("button");
     btn.type="button";
@@ -872,7 +1071,8 @@ function renderCalendar(){
     btn.dataset.date=key;
     btn.innerHTML=`<span class="daynum">${day}</span>
       ${sums.income?`<span class="daymoney in">+${yen(sums.income)}</span>`:""}
-      ${sums.expense?`<span class="daymoney out">−${yen(sums.expense)}</span>`:""}`;
+      ${sums.expense?`<span class="daymoney out">−${yen(sums.expense)}</span>`:""}
+      ${planned?`<span class="daymoney planned">予定 −${yen(planned)}</span>`:""}`;
     btn.addEventListener("click",()=>{
       selectedDateKey=key;
       calendarCursor=new Date(cy,cm,1);
@@ -939,6 +1139,7 @@ document.getElementById("importFile").onchange=async e=>{
   try{
     const obj=JSON.parse(await file.text());
     if(!Array.isArray(obj.pockets)||!Array.isArray(obj.transactions))throw new Error();
+    if(!Array.isArray(obj.commitments))obj.commitments=[];
     obj.settings=obj.settings||{lastSalary:0};data=obj;save();showToast("読み込みました");
   }catch{alert("バックアップファイルを読み込めませんでした。")}
   e.target.value="";
