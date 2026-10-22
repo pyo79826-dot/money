@@ -176,7 +176,7 @@
     <div class="summary">
       <div class="label">合計残高</div>
       <div class="value" id="totalBalance">¥0</div>
-      <div class="sub"><span class="chip" id="monthIn">今月の入金 ¥0</span><span class="chip" id="monthOut">今月の支出 ¥0</span><span class="chip" id="committedTotal">確定支出 ¥0</span><span class="chip" id="usableBalance">使える ¥0</span></div>
+      <div class="sub"><span class="chip" id="monthIn">今月の入金 ¥0</span><span class="chip" id="monthOut">今月の支出 ¥0</span><span class="chip" id="committedTotal">確定支出 ¥0</span><span class="chip" id="reservedTotal">積立確保 ¥0</span><span class="chip" id="usableBalance">使える ¥0</span></div>
     </div>
     <div class="distribution" id="distribution" aria-label="残高の割合"></div>
     <div class="actions">
@@ -185,6 +185,9 @@
     </div>
     <div class="section-head"><div class="section-title">確定支出・支払い予定</div><button class="textbtn" id="addCommitmentBtn">＋ 追加</button></div>
     <div id="commitmentList" class="list"></div>
+    <div class="section-head"><div class="section-title">欲しいもの・積立目標</div><button class="textbtn" id="addGoalBtn">＋ 目標を追加</button></div>
+    <div id="goalList" class="list"></div>
+    <div class="settings-card" style="margin-top:10px"><div class="stat-label">積立を除いた自由残高（箱ごと）</div><div id="goalPocketSummary"></div></div>
     <div class="section-head"><div class="section-title">用途別の残高</div><button class="textbtn" id="addPocketBtn">＋ 箱を追加</button></div>
     <div id="pocketList" class="list"></div>
     <div class="section-head"><div class="section-title">最近の動き</div><button class="textbtn" id="goHistoryBtn">すべて見る</button></div>
@@ -356,6 +359,30 @@
   <button type="button" class="modal-danger" id="pocketDeleteBtn" hidden>この箱を削除</button>
 </form></dialog>
 
+<dialog id="goalDialog"><form method="dialog" class="modal" id="goalForm">
+  <button type="button" class="modal-close" data-close-dialog="goalDialog" aria-label="閉じる">×</button>
+  <h2 id="goalDialogTitle">積立目標を追加</h2>
+  <input id="goalId" type="hidden">
+  <div class="field"><label for="goalName">欲しいもの・目標名</label><input id="goalName" maxlength="60" placeholder="ノートパソコン" required></div>
+  <div class="field"><label for="goalTarget">目標金額</label><input id="goalTarget" type="number" min="1" step="1" inputmode="numeric" required></div>
+  <div class="field"><label for="goalPocket">今後の積立元の箱</label><select id="goalPocket"></select></div>
+  <div class="row2">
+    <div class="field"><label for="goalMode">給料登録時の自動積立</label><select id="goalMode"><option value="fixed">固定金額</option><option value="percent">給料の割合</option><option value="none">手動のみ</option></select></div>
+    <div class="field" id="goalValueField"><label id="goalValueLabel" for="goalValue">給料ごとの積立金額</label><input id="goalValue" type="number" min="0" step="1" inputmode="numeric"></div>
+  </div>
+  <div class="field"><label><input type="checkbox" id="goalPaused"> 自動積立を一時停止</label></div>
+  <p class="hint">積立額は元の箱の残高に含まれます。使えるお金からだけ差し引きます。積立元の変更は今後の積立に適用され、過去の確保先は変わりません。</p>
+  <div class="modal-actions"><button class="save" id="goalSave" value="default">目標を保存</button></div>
+  <div id="goalManage" hidden>
+    <p class="hint" id="goalHeld"></p><p class="hint" id="goalAvailable"></p>
+    <div class="row2">
+      <div class="field"><label for="goalAction">操作</label><select id="goalAction"><option value="reserve">手動で積み立てる</option><option value="release">確保を解除する</option></select></div>
+      <div class="field"><label for="goalAmount">金額</label><input id="goalAmount" type="number" min="1" step="1" inputmode="numeric"></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="smallbtn" id="goalAdjust">金額を反映する</button></div>
+  </div>
+  <button type="button" class="modal-danger" id="goalDelete" hidden>この目標を削除</button>
+</form></dialog>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -369,6 +396,7 @@ const DEFAULT={
   ],
   transactions:[],
   commitments:[],
+  goals:[],
   settings:{lastSalary:0}
 };
 let data=load(), historyFilter="all";
@@ -387,6 +415,7 @@ function load(){
     if(!Array.isArray(d.pockets)||!Array.isArray(d.transactions))return clone(DEFAULT);
     d.settings=d.settings||{lastSalary:0};
     if(!Array.isArray(d.commitments))d.commitments=[];
+    if(!Array.isArray(d.goals))d.goals=[];
     d.pockets.forEach((p,i)=>{if(typeof p.allocation!=="number")p.allocation=0;if(typeof p.balance!=="number")p.balance=0;if(typeof p.target!=="number")p.target=0;if(!p.color)p.color=defaultPocketColor(i)});
     d.commitments.forEach(x=>{
       x.amount=Math.max(0,Math.round(Number(x.amount)||0));
@@ -777,6 +806,7 @@ document.getElementById("txSaveBtn").onclick=e=>{
   const amount=Math.round(Number(document.getElementById("txAmount").value)),memo=document.getElementById("txMemo").value.trim(),p=getPocket(pid);
   if(!p||!amount||amount<=0)return;
   if(type==="expense"&&p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
+  if(type==="expense"&&window.goalCheckSpending&&!window.goalCheckSpending(pid,amount))return;
   p.balance+=type==="income"?amount:-amount;
   data.transactions.push({id:uid(),type,pocketId:pid,pocketName:p.name,amount,memo,date:nowISO()});
   save();closeAppDialog(txDialog);document.getElementById("transactionForm").reset();showToast("保存しました");
@@ -859,6 +889,7 @@ document.getElementById("salarySaveBtn").onclick=e=>{
     date:nowISO()
   });
 
+  if(window.processSalaryGoals)window.processSalaryGoals(amount,breakdown);
   data.settings.lastSalary=amount;
   save();
   closeAppDialog(salaryDialog);
@@ -874,6 +905,7 @@ document.getElementById("transferSaveBtn").onclick=e=>{
   if(!amount||amount<=0)return;
   const a=getPocket(from),b=getPocket(to);if(!a||!b)return;
   if(a.balance<amount&&!confirm("移動元の残高を超えます。続けますか？"))return;
+  if(window.goalCheckSpending&&!window.goalCheckSpending(from,amount))return;
   a.balance-=amount;b.balance+=amount;const d=nowISO();
   data.transactions.push({id:uid(),type:"expense",pocketId:a.id,pocketName:a.name,amount,memo:`${b.name}へ移動`,date:d});
   data.transactions.push({id:uid(),type:"income",pocketId:b.id,pocketName:b.name,amount,memo:`${a.name}から移動`,date:d});
@@ -922,6 +954,7 @@ document.getElementById("pocketSaveBtn").onclick=e=>{
 document.getElementById("pocketDeleteBtn").onclick=()=>{
   const id=document.getElementById("editPocketId").value,p=getPocket(id);if(!p)return;
   if(p.balance!==0){alert("残高が0円の箱だけ削除できます。先に別の箱へ移動してください。");return}
+  if((data.goals||[]).some(g=>g.pocketId===id||(g.allocations||[]).some(a=>a.pocketId===id))){alert("積立目標に使われている箱です。先に積立目標を変更・削除してください。");return}
   if(!confirm(`「${p.name}」を削除しますか？`))return;
   data.pockets=data.pockets.filter(x=>x.id!==id);
   save();closeAppDialog(pocketDialog);showToast("削除しました");
@@ -1140,6 +1173,7 @@ document.getElementById("importFile").onchange=async e=>{
     const obj=JSON.parse(await file.text());
     if(!Array.isArray(obj.pockets)||!Array.isArray(obj.transactions))throw new Error();
     if(!Array.isArray(obj.commitments))obj.commitments=[];
+    if(!Array.isArray(obj.goals))obj.goals=[];
     obj.settings=obj.settings||{lastSalary:0};data=obj;save();showToast("読み込みました");
   }catch{alert("バックアップファイルを読み込めませんでした。")}
   e.target.value="";
@@ -1158,5 +1192,6 @@ if("serviceWorker" in navigator&&location.protocol!=="file:"){
 }
 render();
 </script>
+<script src="./goals.js?v=1"></script>
 </body>
 </html>
