@@ -191,11 +191,13 @@
     <div class="section-head"><div class="section-title">用途別の残高</div><button class="textbtn" id="addPocketBtn">＋ 箱を追加</button></div>
     <div id="pocketList" class="list"></div>
     <div class="section-head"><div class="section-title">最近の動き</div><button class="textbtn" id="goHistoryBtn">すべて見る</button></div>
+    <div id="undoPanel" class="settings-card" hidden style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div style="min-width:0"><div style="font-weight:800">直前の操作を取り消す</div><div id="undoDescription" class="hint"></div></div><button type="button" class="smallbtn" id="undoBtn">↶ 取り消す</button></div>
     <div id="recentList" class="list"></div>
   </section>
 
   <section id="historyPage" class="page">
     <div class="topbar"><h1>履歴</h1><button class="iconbtn" id="historyAddBtn">＋</button></div>
+    <div id="historyUndoPanel" class="settings-card" hidden style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span id="historyUndoDescription" class="hint"></span><button type="button" class="smallbtn" id="historyUndoBtn">↶ 取り消す</button></div>
     <div class="history-tools">
       <button class="filterbtn active" data-filter="all">すべて</button>
       <button class="filterbtn" data-filter="income">入金</button>
@@ -465,7 +467,37 @@ function load(){
     return d;
   }catch{return clone(DEFAULT)}
 }
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render()}
+const UNDO_KEY="vault-last-financial-action-v1";
+let pendingUndo=null;
+function prepareUndo(label){pendingUndo={label,before:clone(data)}}
+function lastUndo(){
+  try{const record=JSON.parse(localStorage.getItem(UNDO_KEY)||"null");return record&&record.before&&record.label?record:null}catch{return null}
+}
+function showUndo(){
+  const record=lastUndo();
+  for(const [panel,description] of [["undoPanel","undoDescription"],["historyUndoPanel","historyUndoDescription"]]){
+    const el=document.getElementById(panel),text=document.getElementById(description);
+    if(el){el.hidden=!record;el.style.display=record?"flex":"none";}
+    if(text)text.textContent=record?"直前: "+record.label:"";
+  }
+}
+function undoLastFinancialAction(){
+  const record=lastUndo();if(!record)return;
+  if(!confirm("「"+record.label+"」を取り消しますか？ 関連する残高・履歴・積立を直前の状態に戻します。"))return;
+  if(!Array.isArray(record.before.pockets)||!Array.isArray(record.before.transactions))return;
+  data=record.before;pendingUndo=null;
+  localStorage.removeItem(UNDO_KEY);
+  save();
+  showToast("直前の操作を取り消しました");
+}
+document.getElementById("undoBtn").onclick=undoLastFinancialAction;
+document.getElementById("historyUndoBtn").onclick=undoLastFinancialAction;
+function save(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  if(pendingUndo){localStorage.setItem(UNDO_KEY,JSON.stringify(pendingUndo));pendingUndo=null}
+  else localStorage.removeItem(UNDO_KEY);
+  render();showUndo();
+}
 function yen(n){return new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:0}).format(Math.round(Number(n)||0))}
 function nowISO(){return new Date().toISOString()}
 function monthKey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
@@ -780,6 +812,8 @@ function payCommitment(id){
   if(!amount)return;
   if(!confirm(`「${x.name}」 ${yen(amount)} を支払い済みにしますか？`))return;
   if(p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
+  if(window.goalCheckSpending&&!window.goalCheckSpending(p.id,amount))return;
+  prepareUndo("支払い "+x.name+" "+yen(amount));
   p.balance-=amount;
   data.transactions.push({id:uid(),type:"expense",pocketId:p.id,pocketName:p.name,amount,memo:x.name,date:nowISO(),commitmentId:x.id});
   let debtFinished=false;
@@ -807,6 +841,7 @@ document.getElementById("txSaveBtn").onclick=e=>{
   if(!p||!amount||amount<=0)return;
   if(type==="expense"&&p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
   if(type==="expense"&&window.goalCheckSpending&&!window.goalCheckSpending(pid,amount))return;
+  prepareUndo((type==="income"?"入金 ":"支出 ")+yen(amount));
   p.balance+=type==="income"?amount:-amount;
   data.transactions.push({id:uid(),type,pocketId:pid,pocketName:p.name,amount,memo,date:nowISO()});
   save();closeAppDialog(txDialog);document.getElementById("transactionForm").reset();showToast("保存しました");
@@ -868,6 +903,7 @@ document.getElementById("salarySaveBtn").onclick=e=>{
   const total=Object.values(alloc).reduce((s,n)=>s+n,0);
   if(total!==100){alert("振り分け割合の合計を100%にしてください。");return}
 
+  prepareUndo("給料の振り分け "+yen(amount));
   data.pockets.forEach(p=>{p.allocation=alloc[p.id]||0});
   let assigned=0;
   const targets=data.pockets.filter(p=>p.allocation>0);
@@ -906,6 +942,7 @@ document.getElementById("transferSaveBtn").onclick=e=>{
   const a=getPocket(from),b=getPocket(to);if(!a||!b)return;
   if(a.balance<amount&&!confirm("移動元の残高を超えます。続けますか？"))return;
   if(window.goalCheckSpending&&!window.goalCheckSpending(from,amount))return;
+  prepareUndo("箱どうしの移動 "+yen(amount));
   a.balance-=amount;b.balance+=amount;const d=nowISO();
   data.transactions.push({id:uid(),type:"expense",pocketId:a.id,pocketName:a.name,amount,memo:`${b.name}へ移動`,date:d});
   data.transactions.push({id:uid(),type:"income",pocketId:b.id,pocketName:b.name,amount,memo:`${a.name}から移動`,date:d});
@@ -1174,6 +1211,7 @@ document.getElementById("importFile").onchange=async e=>{
     if(!Array.isArray(obj.pockets)||!Array.isArray(obj.transactions))throw new Error();
     if(!Array.isArray(obj.commitments))obj.commitments=[];
     if(!Array.isArray(obj.goals))obj.goals=[];
+    pendingUndo=null;
     obj.settings=obj.settings||{lastSalary:0};data=obj;save();showToast("読み込みました");
   }catch{alert("バックアップファイルを読み込めませんでした。")}
   e.target.value="";
@@ -1190,7 +1228,7 @@ if("serviceWorker" in navigator&&location.protocol!=="file:"){
     }catch{}
   });
 }
-render();
+render();showUndo();
 </script>
 <script src="./goals.js?v=1"></script>
 </body>
