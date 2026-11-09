@@ -302,11 +302,21 @@
     <div class="field"><label>繰り返し</label><select id="commitmentRepeat"><option value="none">1回のみ</option><option value="monthly">毎月</option></select></div>
     <div class="field" id="remainingDebtField" style="display:none"><label>残り返済額</label><input id="commitmentRemainingDebt" type="number" min="1" step="1" inputmode="numeric" placeholder="30000"></div>
   </div>
-  <p class="hint">登録した金額は「使えるお金」から先に差し引かれます。実際の残高は「支払い済み」を押すまで減りません。</p>
+  <p class="hint" id="commitmentHint">支払い予定は「使えるお金」から先に差し引かれます。借金は実際に返済したときだけ残高から引かれます。</p>
   <div class="modal-actions"><button class="save" id="commitmentSaveBtn" value="default">保存</button></div>
   <button type="button" class="modal-danger" id="commitmentDeleteBtn" hidden>この予定を削除</button>
 </form></dialog>
 
+<dialog id="debtPaymentDialog"><form method="dialog" class="modal" id="debtPaymentForm">
+  <button type="button" class="modal-close" data-close-dialog="debtPaymentDialog" aria-label="閉じる">×</button>
+  <h2>借金を返済する</h2>
+  <input type="hidden" id="debtPaymentId">
+  <p id="debtPaymentSummary" class="hint"></p>
+  <div class="field"><label for="debtPaymentPocket">どの箱から支払う？</label><select id="debtPaymentPocket" required></select></div>
+  <div class="field"><label for="debtPaymentAmount">今回支払う金額</label><input id="debtPaymentAmount" type="number" min="1" step="1" inputmode="numeric" required></div>
+  <p id="debtPaymentAvailable" class="hint"></p>
+  <div class="modal-actions"><button class="save" id="debtPaymentSubmit">この金額を返済する</button></div>
+</form></dialog>
 <dialog id="transactionDialog"><form method="dialog" class="modal" id="transactionForm">
   <button type="button" class="modal-close" data-close-dialog="transactionDialog" aria-label="閉じる">×</button>
   <h2>取引を追加</h2>
@@ -506,7 +516,7 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1500)}
 function allocationTotal(){return data.pockets.reduce((s,p)=>s+(Number(p.allocation)||0),0)}
 function getCommitment(id){return (data.commitments||[]).find(x=>x.id===id)}
-function commitmentTotal(){return (data.commitments||[]).reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0)}
+function commitmentTotal(){return (data.commitments||[]).filter(x=>x.kind!=="debt").reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0)}
 function todayKey(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -604,20 +614,20 @@ function renderCommitments(){
     const p=getPocket(x.pocketId);
     const overdue=x.dueDate&&x.dueDate<today;
     const dueToday=x.dueDate===today;
-    const dueClass=overdue?"overdue":(dueToday?"today":"");
-    const dueLabel=overdue?"期限超過":(dueToday?"今日支払い":"支払日");
-    const debt=(x.kind==="debt"&&x.remainingDebt!=null)?` ・ 残り ${yen(x.remainingDebt)}`:"";
-    const repeat=x.repeat==="monthly"?" ・ 毎月":"";
+    const dueClass=x.kind==="debt"?"":(overdue?"overdue":(dueToday?"today":""));
+    const dueLabel=x.kind==="debt"?"登録日":(overdue?"期限超過":(dueToday?"今日支払い":"支払日"));
+    const debt=x.kind==="debt"?` ・ 残り ${yen(x.remainingDebt==null?x.amount:x.remainingDebt)}`:"";
+    const repeat=x.kind==="debt"?" ・ 自由返済":(x.repeat==="monthly"?" ・ 毎月":"");
     const row=document.createElement("div");
     row.className="commitment-card";
     row.innerHTML=`<div class="commitment-main">
         <div class="commitment-title">${x.kind==="debt"?"↩️ ":"📌 "}${escapeHtml(x.name||"支払い予定")}</div>
         <div class="commitment-meta"><span class="commitment-due ${dueClass}">${dueLabel} ${formatDateKey(x.dueDate)}</span>・ ${escapeHtml(p?.name||"支払う箱なし")}${repeat}${debt}</div>
       </div>
-      <div class="commitment-amount">−${yen(x.amount)}</div>
+      <div class="commitment-amount">${x.kind==="debt"?yen(x.remainingDebt==null?x.amount:x.remainingDebt):"−"+yen(x.amount)}</div>
       <div class="commitment-actions">
         <button type="button" class="commitment-edit" data-edit-commitment="${x.id}">編集</button>
-        <button type="button" class="commitment-pay" data-pay-commitment="${x.id}">支払い済み</button>
+        <button type="button" class="commitment-pay" data-pay-commitment="${x.id}">${x.kind==="debt"?"今すぐ返済":"支払い済み"}</button>
       </div>`;
     box.appendChild(row);
   });
@@ -743,7 +753,15 @@ const commitmentDialog=document.getElementById("commitmentDialog");
 function syncCommitmentKindFields(){
   const isDebt=document.getElementById("commitmentKind").value==="debt";
   document.getElementById("remainingDebtField").style.display=isDebt?"grid":"none";
-  if(isDebt && document.getElementById("commitmentRepeat").value==="none")document.getElementById("commitmentRepeat").value="monthly";
+  document.getElementById("commitmentAmount").closest(".field").style.display=isDebt?"none":"grid";
+  document.getElementById("commitmentDueDate").closest(".field").style.display=isDebt?"none":"grid";
+  document.getElementById("commitmentRepeat").closest(".field").style.display=isDebt?"none":"grid";
+  document.getElementById("commitmentPocket").closest(".field").style.display=isDebt?"none":"grid";
+  document.getElementById("commitmentAmount").required=!isDebt;
+  document.getElementById("commitmentDueDate").required=!isDebt;
+  document.getElementById("commitmentRemainingDebt").required=isDebt;
+  document.getElementById("remainingDebtField").querySelector("label").textContent="借金の残額";
+  document.getElementById("commitmentHint").textContent=isDebt?"借金の残額を登録します。返済するたびに金額と引き落とす箱を自由に選べます。":"確定した支払い予定は使える残高から先に差し引かれます。";
 }
 document.getElementById("commitmentKind").addEventListener("change",syncCommitmentKindFields);
 
@@ -771,7 +789,7 @@ function openCommitmentEditor(id){
   document.getElementById("commitmentAmount").value=x.amount||"";
   document.getElementById("commitmentDueDate").value=x.dueDate||todayKey();
   document.getElementById("commitmentRepeat").value=x.repeat||"none";
-  document.getElementById("commitmentRemainingDebt").value=x.remainingDebt==null?"":x.remainingDebt;
+  document.getElementById("commitmentRemainingDebt").value=x.remainingDebt==null?(x.kind==="debt"?x.amount:""):x.remainingDebt;
   document.getElementById("commitmentDeleteBtn").hidden=false;
   syncCommitmentKindFields();
   openAppDialog(commitmentDialog);
@@ -787,13 +805,14 @@ document.getElementById("commitmentSaveBtn").onclick=e=>{
   const dueDate=document.getElementById("commitmentDueDate").value;
   const repeat=document.getElementById("commitmentRepeat").value==="monthly"?"monthly":"none";
   const debtRaw=document.getElementById("commitmentRemainingDebt").value;
-  const remainingDebt=kind==="debt"&&debtRaw!==""?Math.max(amount,Math.round(Number(debtRaw)||0)):null;
-  if(!name||!pocketId||!amount||!dueDate)return;
+  const remainingDebt=kind==="debt"?Math.max(0,Math.round(Number(debtRaw)||0)):null;
+  if(!name)return;
+  if(kind==="debt"?!remainingDebt:(!pocketId||!amount||!dueDate))return;
   if(id){
     const x=getCommitment(id);if(!x)return;
-    Object.assign(x,{name,kind,pocketId,amount,dueDate,repeat,remainingDebt});
+    Object.assign(x,{name,kind,pocketId,amount:kind==="debt"?remainingDebt:amount,dueDate,repeat:kind==="debt"?"none":repeat,remainingDebt});
   }else{
-    data.commitments.push({id:uid(),name,kind,pocketId,amount,dueDate,repeat,remainingDebt,createdAt:nowISO()});
+    data.commitments.push({id:uid(),name,kind,pocketId,amount:kind==="debt"?remainingDebt:amount,dueDate,repeat:kind==="debt"?"none":repeat,remainingDebt,createdAt:nowISO()});
   }
   save();closeAppDialog(commitmentDialog);showToast(id?"変更しました":"支払い予定を追加しました");
 };
@@ -804,30 +823,64 @@ document.getElementById("commitmentDeleteBtn").onclick=()=>{
   data.commitments=data.commitments.filter(v=>v.id!==id);
   save();closeAppDialog(commitmentDialog);showToast("削除しました");
 };
+const debtPaymentDialog=document.getElementById("debtPaymentDialog");
+function openDebtPayment(id){
+  const x=getCommitment(id);if(!x||x.kind!=="debt")return;
+  const remaining=Math.max(0,Number(x.remainingDebt==null?x.amount:x.remainingDebt)||0);
+  if(remaining<=0){showToast("返済済みです");return}
+  document.getElementById("debtPaymentId").value=id;
+  document.getElementById("debtPaymentSummary").textContent=x.name+" ・ 借金残額 "+yen(remaining);
+  const select=document.getElementById("debtPaymentPocket");
+  select.innerHTML="";
+  data.pockets.forEach(p=>{const option=document.createElement("option");option.value=p.id;option.textContent=(p.emoji||"💰")+" "+p.name;select.appendChild(option)});
+  if(getPocket(x.pocketId))select.value=x.pocketId;
+  document.getElementById("debtPaymentAmount").value="";
+  updateDebtPaymentAvailable();
+  openAppDialog(debtPaymentDialog);
+}
+function updateDebtPaymentAvailable(){
+  const p=getPocket(document.getElementById("debtPaymentPocket").value);
+  document.getElementById("debtPaymentAvailable").textContent=p?"箱の残高 "+yen(p.balance)+"（積立の確保金は別途保護）":"";
+}
+document.getElementById("debtPaymentPocket").addEventListener("change",updateDebtPaymentAvailable);
+document.getElementById("debtPaymentSubmit").onclick=e=>{
+  e.preventDefault();
+  const x=getCommitment(document.getElementById("debtPaymentId").value);
+  const p=getPocket(document.getElementById("debtPaymentPocket").value);
+  const amount=Math.round(Number(document.getElementById("debtPaymentAmount").value));
+  if(!x||x.kind!=="debt"||!p||!Number.isSafeInteger(amount)||amount<=0)return;
+  const remaining=Math.max(0,Number(x.remainingDebt==null?x.amount:x.remainingDebt)||0);
+  if(amount>remaining){alert("借金の残額を超えています。残り "+yen(remaining)+" 以下を指定してください。");return}
+  if(amount>p.balance){alert("選択した箱の残高が不足しています。");return}
+  if(window.goalCheckSpending&&!window.goalCheckSpending(p.id,amount))return;
+  if(!confirm("「"+x.name+"」へ "+yen(amount)+" を "+p.name+" から返済しますか？"))return;
+  prepareUndo("借金返済 "+x.name+" "+yen(amount));
+  p.balance-=amount;
+  x.remainingDebt=remaining-amount;
+  x.pocketId=p.id;
+  data.transactions.push({id:uid(),type:"expense",pocketId:p.id,pocketName:p.name,amount,memo:"借金返済："+x.name,date:nowISO(),commitmentId:x.id,debtPayment:true});
+  if(x.remainingDebt===0)data.commitments=data.commitments.filter(v=>v.id!==x.id);
+  save();
+  closeAppDialog(debtPaymentDialog);
+  showToast(remaining===amount?"借金を完済しました":"返済を記録しました");
+};
 function payCommitment(id){
   const x=getCommitment(id);if(!x)return;
+  if(x.kind==="debt"){openDebtPayment(id);return}
   const p=getPocket(x.pocketId);
   const amount=Math.max(0,Math.round(Number(x.amount)||0));
   if(!p){alert("支払うお金箱が見つかりません。編集して選び直してください。");return}
   if(!amount)return;
-  if(!confirm(`「${x.name}」 ${yen(amount)} を支払い済みにしますか？`))return;
+  if(!confirm("「"+x.name+"」 "+yen(amount)+" を支払い済みにしますか？"))return;
   if(p.balance<amount&&!confirm("このお金箱の残高を超えます。続けますか？"))return;
   if(window.goalCheckSpending&&!window.goalCheckSpending(p.id,amount))return;
   prepareUndo("支払い "+x.name+" "+yen(amount));
   p.balance-=amount;
   data.transactions.push({id:uid(),type:"expense",pocketId:p.id,pocketName:p.name,amount,memo:x.name,date:nowISO(),commitmentId:x.id});
-  let debtFinished=false;
-  if(x.kind==="debt"&&x.remainingDebt!=null){
-    x.remainingDebt=Math.max(0,Number(x.remainingDebt)-amount);
-    debtFinished=x.remainingDebt<=0;
-  }
-  if(x.repeat==="monthly"&&!debtFinished){
-    x.dueDate=addOneMonthKey(x.dueDate||todayKey());
-  }else{
-    data.commitments=data.commitments.filter(v=>v.id!==x.id);
-  }
+  if(x.repeat==="monthly")x.dueDate=addOneMonthKey(x.dueDate||todayKey());
+  else data.commitments=data.commitments.filter(v=>v.id!==x.id);
   save();
-  showToast(debtFinished?"返済が完了しました":(x.repeat==="monthly"?"支払い済み・次月へ更新":"支払い済みにしました"));
+  showToast(x.repeat==="monthly"?"支払い済み・次月へ更新":"支払い済みにしました");
 }
 
 const txDialog=document.getElementById("transactionDialog");
