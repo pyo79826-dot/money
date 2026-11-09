@@ -45,8 +45,7 @@
     icon.rel='apple-touch-icon';icon.sizes='180x180';icon.href='./apple-touch-icon.png?v=27';
     document.head.appendChild(icon);
   }
-  const version=document.querySelector('.version');
-  if(version)version.textContent='VAULT v2.7';
+  // Version label is maintained by index.html. Do not overwrite it here.
 
   const settings=document.getElementById('settingsPage');
   if(settings && !document.getElementById('vaultLoginEnabled')){
