@@ -1,5 +1,5 @@
-const CACHE="moneybox-cache-v15";
-const CORE=["./","./index.html","./manifest.webmanifest","./apple-touch-icon.png","./auth-v27.js?v=27","./goals.js?v=1"];
+const CACHE="moneybox-cache-v16";
+const CORE=["./","./index.html","./manifest.webmanifest","./apple-touch-icon.png","./auth-v27.js?v=28","./goals.js?v=1"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
@@ -20,7 +20,7 @@ async function withVaultAuth(response){
   if(!type.includes("text/html"))return response;
   let text=await response.text();
   if(!text.includes("auth-v27.js")){
-    text=text.replace("</body>",'<script src="./auth-v27.js?v=27"></script></body>');
+    text=text.replace("</body>",'<script src="./auth-v27.js?v=28"></script></body>');
   }
   const headers=new Headers(response.headers);
   headers.delete("content-length");
